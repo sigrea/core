@@ -1,9 +1,12 @@
 {
     "name": "alien-signals-starter",
     "scripts": {
-        "start": "tsx start.ts"
+        "start": "tsx start.ts",
+        "format": "biome check --write"
     },
     "devDependencies": {
+        "@biomejs/biome": "1.9.4",
+        "lefthook": "1.10.10",
         "tsx": "latest"
     },
     "dependencies": {
