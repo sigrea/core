@@ -1,16 +1,17 @@
 {
-    "name": "alien-signals-starter",
-    "scripts": {
-        "start": "tsx start.ts",
-        "format": "biome check --write"
-    },
-    "devDependencies": {
-        "@biomejs/biome": "1.9.4",
-        "lefthook": "1.10.10",
-        "tsx": "latest"
-    },
-    "dependencies": {
-        "alien-signals": "^1.0.0",
-        "es-toolkit": "^1.32.0"
-    }
+	"name": "alien-signals-starter",
+	"scripts": {
+		"start": "tsx start.ts",
+		"format": "biome check --write",
+		"postinstall": "lefthook install"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "1.9.4",
+		"lefthook": "1.10.10",
+		"tsx": "latest"
+	},
+	"dependencies": {
+		"alien-signals": "^1.0.0",
+		"es-toolkit": "^1.32.0"
+	}
 }
