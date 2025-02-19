@@ -1,22 +1,22 @@
-# alien-signals-starter
+# sigrea
 
 Use the `createReactiveSystem` API to build a simple signal library.
 
 ## Usage
 
 ```ts
-import { signal, computed, effect } from 'alien-signals-starter';
+import { signal, computed, watch } from 'sigrea';
 
 const count = signal(1);
-const doubleCount = computed(() => count.get() * 2);
+const doubleCount = computed(() => count.value * 2);
 
-effect(() => {
-  console.log(`Count is: ${count.get()}`);
-}); // Console: Count is: 1
+watch(count, (newVal, oldVal) => {
+  console.log(`prev count is: ${oldVal}`, next count is: ${newVal});
+}); 
 
-console.log(doubleCount.get()); // 2
+console.log(doubleCount.value); // 2
 
-count.set(2); // Console: Count is: 2
+count.value = 2; // Console: prev count is: 1, next count is: 2
 
-console.log(doubleCount.get()); // 4
+console.log(doubleCount.value); // 4
 ```
