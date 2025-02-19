@@ -1,8 +1,16 @@
 {
   "name": "sigrea",
   "version": "1.0.0",
+  "sideEffects": false,
+  "license": "MIT",
+  "description": "The signal base reactive programming library.",
+  "packageManager": "pnpm@10.4.1",
   "publishConfig": {
     "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sigrea/core.git"
   },
   "type": "module",
   "exports": {
