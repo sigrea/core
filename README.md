@@ -1,6 +1,6 @@
 # sigrea
 
-The is **si**gnal base **rea**ctive programming library.
+The **si**gnal base **rea**ctive programming library.
 
 This library is based on [alien-signals](https://github.com/stackblitz/alien-signals) and [alien-signals-starter](https://github.com/johnsoncodehk/alien-signals-starter).
 
