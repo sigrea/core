@@ -1,6 +1,8 @@
 # sigrea
 
-Use the `createReactiveSystem` API to build a simple signal library.
+This is **si**gnal base **rea**ctive programming library.
+
+The library is based on [alien-signals](https://github.com/stackblitz/alien-signals) and [alien-signals-starter](https://github.com/johnsoncodehk/alien-signals-starter).
 
 ## Usage
 
