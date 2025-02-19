@@ -1,14 +1,16 @@
-import { computed, effect, signal } from "./index";
+import { computed, signal, watch } from "./index";
 
 const count = signal(1);
-const doubleCount = computed(() => count.get() * 2);
+const doubleCount = computed(() => count.value * 2);
 
-effect(() => {
-  console.log(`Count is: ${count.get()}`);
-}); // Console: Count is: 1
+watch(count, (newVal, oldVal) => {
+  console.log(`old count value is: ${oldVal}, new count value is: ${newVal}`);
+});
 
-console.log(doubleCount.get()); // 2
+console.log(`count is: ${count.value}`); // 1
+console.log(`doubleCount is: ${doubleCount.value}`); // 2
 
-count.set(2); // Console: Count is: 2
+console.log("`count.value = 2`");
+count.value = 2; // Console: prev count is: 1, next count is: 2
 
-console.log(doubleCount.get()); // 4
+console.log(`doubleCount is: ${doubleCount.value}`); // 4
