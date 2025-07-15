@@ -25,7 +25,6 @@
   "scripts": {
     "build": "unbuild",
     "prepack": "unbuild",
-    "start": "tsx start.ts",
     "format": "biome check --write",
     "postinstall": "lefthook install",
     "test": "vitest",
