@@ -160,6 +160,33 @@ docs: update API reference for asyncComputed
 - Include examples for new features
 - Keep documentation concise and clear
 
+## Dependency Management
+
+### Renovate Bot
+
+We use Renovate to automatically manage dependency updates:
+
+- **Automatic PRs**: Renovate creates PRs for dependency updates
+- **Grouped Updates**: Minor and patch updates are grouped together
+- **Automerge**: Non-major updates are automatically merged after tests pass
+- **Schedule**: Updates run on weekday evenings and weekends (Asia/Tokyo timezone)
+- **Lock File Maintenance**: pnpm lock file is updated weekly
+
+### Manual Updates
+
+If you need to update dependencies manually:
+
+```bash
+# Update a specific package
+pnpm update package-name
+
+# Update all dependencies
+pnpm update
+
+# After updating, ensure lock file is clean
+pnpm install
+```
+
 ## Questions?
 
 Feel free to:
