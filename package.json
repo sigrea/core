@@ -27,7 +27,10 @@
     "prepack": "unbuild",
     "start": "tsx start.ts",
     "format": "biome check --write",
-    "postinstall": "lefthook install"
+    "postinstall": "lefthook install",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
