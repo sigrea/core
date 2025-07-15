@@ -1,0 +1,70 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommitTypeAll(chore)",
+    ":enablePreCommit"
+  ],
+  "timezone": "Asia/Tokyo",
+  "schedule": [
+    "after 10pm every weekday",
+    "before 5am every weekday",
+    "every weekend"
+  ],
+  "packageRules": [
+    {
+      "groupName": "all non-major dependencies",
+      "groupSlug": "all-minor-patch",
+      "matchPackagePatterns": ["*"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "excludePackageNames": ["typescript"]
+    },
+    {
+      "groupName": "vitest",
+      "matchPackageNames": ["vitest", "@vitest/ui", "@vitest/coverage-v8"]
+    },
+    {
+      "groupName": "alien-signals",
+      "matchPackageNames": ["alien-signals"]
+    },
+    {
+      "groupName": "biome",
+      "matchPackageNames": ["@biomejs/biome"]
+    },
+    {
+      "matchPackageNames": ["typescript"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "matchPackageNames": ["typescript"],
+      "matchUpdateTypes": ["minor", "major"],
+      "automerge": false
+    },
+    {
+      "matchDepTypes": ["peerDependencies"],
+      "rangeStrategy": "widen"
+    }
+  ],
+  "prConcurrentLimit": 3,
+  "prHourlyLimit": 2,
+  "automerge": true,
+  "automergeType": "pr",
+  "platformAutomerge": true,
+  "labels": ["dependencies"],
+  "rangeStrategy": "bump",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true,
+    "schedule": ["before 3am on Monday"]
+  },
+  "postUpdateOptions": ["pnpmDedupe"],
+  "ignorePaths": ["**/node_modules/**", "**/dist/**"],
+  "prCreation": "immediate",
+  "semanticCommits": "enabled",
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "recreateWhen": "always",
+  "rebaseWhen": "behind-base-branch"
+}
