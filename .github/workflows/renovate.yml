@@ -1,0 +1,30 @@
+name: Renovate
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */2 * * *'
+  push:
+    branches:
+      - master
+    paths:
+      - 'renovate.json'
+      - '.github/workflows/renovate.yml'
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Self-hosted Renovate
+        uses: renovatebot/github-action@v40.5.1
+        with:
+          configurationFile: renovate.json
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          RENOVATE_AUTODISCOVER: false
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          LOG_LEVEL: debug
