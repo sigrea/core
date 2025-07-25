@@ -22,3 +22,11 @@ export { asyncComputed, AsyncComputed } from "./asyncComputed";
 
 // Type guards
 export { isSignal, isComputed, isAsyncComputed } from "./utils";
+
+// Lifecycle
+export type {
+  LifecycleCapable,
+  MountCallback,
+  UnmountCallback,
+} from "./lifecycle";
+export { isLifecycleCapable, onMount, onUnmount, keepMount } from "./lifecycle";
