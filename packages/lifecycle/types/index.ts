@@ -1,6 +1,6 @@
 // Lifecycle types and interfaces
 
-export type MountCallback = () => (() => void) | undefined;
+export type MountCallback = () => (() => void) | undefined | void;
 export type UnmountCallback = () => void;
 
 export interface LifecycleCapable {
