@@ -32,7 +32,6 @@ export class Computed<T = any>
   depsTail: Link | undefined = undefined;
   flags: SubscriberFlags = SubscriberFlags.Computed | SubscriberFlags.Dirty;
 
-  // Lifecycle properties
   private __listenerCount = 0;
   private _mountCallbacks = new Set<MountCallback>();
   private _cleanupFunctions = new Set<() => void>();
@@ -77,7 +76,6 @@ export class Computed<T = any>
     }
   }
 
-  // Expose lifecycle state as readonly properties
   get _listenerCount(): number {
     return this.__listenerCount;
   }
@@ -86,16 +84,13 @@ export class Computed<T = any>
     return this.__isMounted;
   }
 
-  // Register a mount callback
   onMount(callback: MountCallback): () => void {
     if (typeof callback !== "function") {
       throw new TypeError("Mount callback must be a function");
     }
 
-    // Add callback to the set
     this._mountCallbacks.add(callback);
 
-    // If already mounted, execute the callback immediately
     if (this.__isMounted) {
       try {
         const cleanup = callback();
@@ -116,53 +111,49 @@ export class Computed<T = any>
       }
     }
 
-    // Return unsubscribe function
     return () => {
       this._mountCallbacks.delete(callback);
     };
   }
 
-  // Track a new subscriber
   private _trackSubscriber(subscriber: Subscriber): void {
     if (!this._trackedSubscribers.has(subscriber)) {
       this._trackedSubscribers.add(subscriber);
       this.__listenerCount++;
 
-      // Cancel any pending unmount
       if (this._unmountTimer) {
         clearTimeout(this._unmountTimer);
         this._unmountTimer = undefined;
       }
 
-      // Trigger mount when first subscriber is added
       if (this.__listenerCount === 1 && !this.__isMounted) {
         this._mount();
       }
     }
   }
 
-  // Untrack a subscriber
-  // @ts-ignore - Used externally by reactive system
+  // @ts-ignore - _untrackSubscriber is private but needs to be called by
+  // reactive system's endTracking function via WeakMap for lifecycle cleanup
+  // when dependencies are removed
   private _untrackSubscriber(subscriber: Subscriber): void {
     if (this._trackedSubscribers.has(subscriber)) {
       this._trackedSubscribers.delete(subscriber);
       this.__listenerCount--;
 
-      // Trigger delayed unmount when last subscriber is removed
+      // Delay unmount by 1 second to handle rapid subscribe/unsubscribe cycles
       if (this.__listenerCount === 0 && this.__isMounted) {
         this._scheduleUnmount();
       }
     }
   }
 
-  // Schedule delayed unmount
   private _scheduleUnmount(): void {
     try {
       if (this._unmountTimer) {
         clearTimeout(this._unmountTimer);
       }
 
-      // Capture current dependencies before they might be cleared
+      // Capture deps before they're cleared during computed re-evaluation
       this._capturedDependencies = new Set();
       let link = this.deps;
       while (link !== undefined) {
@@ -179,18 +170,18 @@ export class Computed<T = any>
       }, 1000);
     } catch (error) {
       console.error("Timer scheduling error:", error);
-      // Fallback to immediate unmount
+      // If timer scheduling fails (e.g., in resource-constrained environments),
+      // unmount immediately to prevent memory leaks. This trades the 1-second grace period
+      // for guaranteed cleanup, prioritizing memory safety over optimization.
       if (this.__listenerCount === 0) {
         this._unmount();
       }
     }
   }
 
-  // Execute mount callbacks
   private _mount(): void {
     this.__isMounted = true;
 
-    // Execute all mount callbacks and collect cleanup functions
     for (const callback of this._mountCallbacks) {
       try {
         const cleanup = callback();
@@ -199,20 +190,18 @@ export class Computed<T = any>
         }
       } catch (error) {
         console.error("Mount callback error:", error);
-        // Continue with other callbacks
+        // Continue executing remaining callbacks - partial initialization
+        // is better than complete failure
       }
     }
   }
 
-  // Execute cleanup functions and unmount
   private _unmount(): void {
-    // Clear the unmount timer if it exists
     if (this._unmountTimer) {
       clearTimeout(this._unmountTimer);
       this._unmountTimer = undefined;
     }
 
-    // Use captured dependencies if available, otherwise use current deps
     if (this._capturedDependencies && this._capturedDependencies.size > 0) {
       for (const dep of this._capturedDependencies) {
         if (typeof dep._untrackSubscriber === "function") {
@@ -221,11 +210,9 @@ export class Computed<T = any>
       }
       this._capturedDependencies.clear();
     } else {
-      // Fallback to current dependencies
       let link = this.deps;
       while (link !== undefined) {
         const dep = link.dep;
-        // Check if dependency has lifecycle capabilities
         if (
           dep &&
           "_untrackSubscriber" in dep &&
@@ -237,20 +224,18 @@ export class Computed<T = any>
       }
     }
 
-    // Execute all cleanup functions
     for (const cleanup of this._cleanupFunctions) {
       try {
         cleanup();
       } catch (error) {
         console.error("Cleanup function error:", error);
-        // Continue with other cleanup functions
+        // Continue cleanup even if one fails - others may still release
+        // important resources (network connections, timers, etc.)
       }
     }
 
-    // Clear cleanup functions after execution
     this._cleanupFunctions.clear();
 
-    // Mark as unmounted
     this.__isMounted = false;
   }
 }
@@ -264,8 +249,6 @@ export function readonly<T extends Signal<any>>(
 ): Computed<T["value"]> {
   return computed(() => signal.value);
 }
-
-// Public lifecycle API functions
 
 /**
  * Register a mount callback on a computed value
@@ -295,7 +278,7 @@ export function onUnmount<T>(
     throw new TypeError("onUnmount can only be called on a Computed");
   }
 
-  // Wrap the unmount callback as a mount callback that returns it
+  // Trick: register unmount callback as return value of mount callback
   const mountCallback: MountCallback = () => callback;
   return store.onMount(mountCallback);
 }
@@ -309,12 +292,11 @@ export function keepMount<T>(store: Computed<T>): () => void {
     throw new TypeError("keepMount can only be called on a Computed");
   }
 
-  // Create a dummy effect that keeps the store subscribed
+  // Keep subscribed via dummy effect
   const keepAlive = effect(() => {
-    store.value; // Access value to create dependency
+    store.value; // Access to create dependency
   });
 
-  // Return cleanup function
   return () => {
     keepAlive.stop();
   };

@@ -44,11 +44,10 @@ export class Effect<T = any> implements Subscriber {
   }
 
   stop(): void {
-    // Notify all dependencies that this effect is being removed
+    // Notify deps this effect is being removed (for lifecycle cleanup)
     let link = this.deps;
     while (link !== undefined) {
       const dep = link.dep;
-      // Check if dependency has lifecycle capabilities
       if (
         dep &&
         "_untrackSubscriber" in dep &&
