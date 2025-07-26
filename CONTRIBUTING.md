@@ -38,8 +38,8 @@ We love pull requests! Here's how to contribute code:
 
 ### Prerequisites
 
-- Node.js 16+
-- pnpm 8+
+- Node.js 20+
+- pnpm 10+
 
 ### Getting Started
 

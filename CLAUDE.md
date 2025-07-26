@@ -145,7 +145,7 @@ The lifecycle system is modularized into:
 
 ## Code Style and Conventions
 
-- **TypeScript**: ES2021 target, strict mode enabled, CommonJS module system
+- **TypeScript**: ES2023 target, strict mode enabled, CommonJS module system
 - **Formatting**: Biome with spaces for indentation, double quotes for strings
 - **Linting**: Biome with recommended rules, `noExplicitAny` disabled
 - **Dependencies**: Managed by Renovate bot with automatic non-major updates

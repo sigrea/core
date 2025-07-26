@@ -11,6 +11,11 @@ Signal-based reactive programming library built on [alien-signals](https://githu
 - **TypeScript-first** - Full type inference without annotations
 - **Lightweight** - Tree-shakeable and minimal runtime overhead
 
+## Prerequisites
+
+- Node.js 20+ (ES2023 features required)
+- TypeScript 5.7+ (for development)
+
 ## Installation
 
 ```bash
