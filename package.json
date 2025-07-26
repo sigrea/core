@@ -1,6 +1,6 @@
 {
   "name": "sigrea",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "sideEffects": false,
   "license": "MIT",
   "description": "The signal base reactive programming library.",

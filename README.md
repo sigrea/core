@@ -8,6 +8,7 @@ Signal-based reactive programming library built on [alien-signals](https://githu
 - **Automatic dependency tracking** - No manual subscription management
 - **Lazy evaluation** - Computed values update only when accessed
 - **First-class async support** - Handle async operations reactively
+- **Lifecycle management** - Run code when stores gain/lose subscribers
 - **TypeScript-first** - Full type inference without annotations
 - **Lightweight** - Tree-shakeable and minimal runtime overhead
 
@@ -157,7 +158,7 @@ console.log(readonlyCount.value); // 0
 Type guards for runtime type checking:
 
 ```typescript
-import { isSignal, isComputed, isAsyncComputed } from "sigrea";
+import { isSignal, isComputed, isAsyncComputed, isLifecycleCapable } from "sigrea";
 
 const s = signal(1);
 const c = computed(() => 2);
@@ -166,6 +167,125 @@ const ac = asyncComputed(async () => 3);
 console.log(isSignal(s)); // true
 console.log(isComputed(c)); // true
 console.log(isAsyncComputed(ac)); // true
+console.log(isLifecycleCapable(s)); // true - signals support lifecycle
+console.log(isLifecycleCapable(c)); // true - computed support lifecycle
+```
+
+### Lifecycle Management
+
+Sigrea provides lifecycle management for reactive stores, allowing you to run code when stores gain or lose subscribers.
+
+#### `onMount(store, callback)`
+
+Execute a callback when a signal or computed gains its first subscriber.
+
+```typescript
+const data = signal<User | null>(null);
+
+// Start fetching when someone subscribes
+onMount(data, () => {
+  console.log("Starting data fetch...");
+  
+  fetchUser().then(user => {
+    data.value = user;
+  });
+  
+  // Optional: return cleanup function
+  return () => {
+    console.log("Canceling pending requests...");
+  };
+});
+
+// The mount callback runs when this effect is created
+effect(() => {
+  console.log(data.value); // Triggers mount on first access
+});
+```
+
+#### `onUnmount(store, callback)`
+
+Execute a callback when a signal or computed loses its last subscriber (after a 1-second delay).
+
+```typescript
+const connection = signal<WebSocket | null>(null);
+
+// Cleanup when no one is listening
+onUnmount(connection, () => {
+  if (connection.value) {
+    console.log("Closing WebSocket connection...");
+    connection.value.close();
+    connection.value = null;
+  }
+});
+```
+
+#### `keepMount(store)`
+
+Prevent a store from unmounting during temporary subscriber changes.
+
+```typescript
+const expensiveData = computed(() => {
+  // Some expensive computation
+  return processLargeDataset();
+});
+
+// Keep the computed mounted even if temporarily unused
+const release = keepMount(expensiveData);
+
+// Later, when you want to allow normal unmounting
+release();
+```
+
+#### Lifecycle Example: Auto-Refreshing Data
+
+```typescript
+const userId = signal(1);
+const userData = signal<User | null>(null);
+const refreshInterval = 60000; // 1 minute
+
+// Setup auto-refresh when subscribed
+onMount(userData, () => {
+  let intervalId: any;
+  let abortController: AbortController;
+  
+  const fetchData = async () => {
+    abortController = new AbortController();
+    try {
+      const response = await fetch(`/api/users/${userId.value}`, {
+        signal: abortController.signal
+      });
+      userData.value = await response.json();
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error('Fetch failed:', error);
+      }
+    }
+  };
+  
+  // Initial fetch
+  fetchData();
+  
+  // Setup interval
+  intervalId = setInterval(fetchData, refreshInterval);
+  
+  // Cleanup function
+  return () => {
+    clearInterval(intervalId);
+    abortController?.abort();
+  };
+});
+
+// Component usage
+const userProfile = computed(() => {
+  const user = userData.value;
+  if (!user) return "Loading...";
+  return `${user.name} (${user.email})`;
+});
+
+// Data fetching starts when this effect runs
+effect(() => {
+  console.log(userProfile.value);
+});
 ```
 
 ## Examples
