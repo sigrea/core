@@ -1,6 +1,18 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
-  ]
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": ["config:recommended"],
+	"dependencyDashboard": true,
+	"labels": ["dependencies"],
+	"rangeStrategy": "bump",
+	"schedule": ["before 3am on sunday"],
+	"packageRules": [
+		{
+			"matchPackagePatterns": ["^@types/"],
+			"groupName": "types"
+		},
+		{
+			"matchManagers": ["github-actions"],
+			"groupName": "github-actions"
+		}
+	]
 }
