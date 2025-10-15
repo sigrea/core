@@ -51,7 +51,7 @@ jobs:
       - name: Verify packed artifacts
         run: |
           set -euo pipefail
-          TARBALL=$(npm pack --silent)
+          TARBALL=$(npm pack --json | jq -r '.[0].filename')
           echo "Packed tarball: $TARBALL"
           echo "Listing contents:" && tar -tf "$TARBALL" | sed -n '1,200p'
           # verify essential build outputs exist in the tarball
