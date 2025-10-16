@@ -5,6 +5,7 @@ on:
   pull_request:
 permissions:
   contents: read
+  actions: read
   security-events: write
 jobs:
   analyze:
@@ -15,4 +16,3 @@ jobs:
         with:
           languages: javascript-typescript
       - uses: github/codeql-action/analyze@v3
-
