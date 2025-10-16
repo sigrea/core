@@ -48,6 +48,9 @@
 		"format": "biome check .",
 		"format:fix": "biome check --write ."
 	},
+	"dependencies": {
+		"alien-signals": "^1.0.3"
+	},
 	"devDependencies": {
 		"@biomejs/biome": "1.9.4",
 		"@changesets/cli": "^2.29.6",
