@@ -6,13 +6,12 @@ const { link: originalLink, endTracking: originalEndTracking } = reactiveSystem;
 const subscriberDeps = new WeakMap<Subscriber, Set<Dependency>>();
 
 type UntrackableDependency = Dependency & {
-	_untrackSubscriber?: (sub: Subscriber) => void;
+	_untrackSubscriber: (sub: Subscriber) => void;
 };
 
 function hasUntrackSubscriber(dep: Dependency): dep is UntrackableDependency {
-	return (
-		typeof (dep as UntrackableDependency)._untrackSubscriber === "function"
-	);
+	const candidate = dep as { _untrackSubscriber?: unknown };
+	return typeof candidate._untrackSubscriber === "function";
 }
 
 export function link(dep: Dependency, sub: Subscriber): Link | undefined {
