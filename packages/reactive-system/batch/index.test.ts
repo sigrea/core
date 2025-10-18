@@ -45,4 +45,10 @@ describe("reactive-system/batch", () => {
 		decrementBatchDepth();
 		expect(getBatchDepth()).toBe(0);
 	});
+
+	it("does not underflow when decrementing at zero", () => {
+		expect(getBatchDepth()).toBe(0);
+		expect(decrementBatchDepth()).toBe(0);
+		expect(getBatchDepth()).toBe(0);
+	});
 });

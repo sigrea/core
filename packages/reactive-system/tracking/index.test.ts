@@ -84,4 +84,45 @@ describe("reactive-system/tracking", () => {
 
 		expect(untrack).not.toHaveBeenCalled();
 	});
+
+	it("only unsubscribes dependencies removed between tracking passes", () => {
+		const firstUntrack = vi.fn();
+		const secondUntrack = vi.fn();
+		const thirdUntrack = vi.fn();
+
+		const first = createDependency(firstUntrack);
+		const second = createDependency(secondUntrack);
+		const third = createDependency(thirdUntrack);
+		const sub = createSubscriber();
+
+		startTracking(sub);
+		link(first, sub);
+		link(second, sub);
+		endTracking(sub);
+
+		startTracking(sub);
+		link(second, sub);
+		link(third, sub);
+		endTracking(sub);
+
+		expect(firstUntrack).toHaveBeenCalledWith(sub);
+		expect(secondUntrack).not.toHaveBeenCalled();
+		expect(thirdUntrack).not.toHaveBeenCalled();
+	});
+
+	it("does not untrack dependencies that persist across runs", () => {
+		const untrack = vi.fn();
+		const dep = createDependency(untrack);
+		const sub = createSubscriber();
+
+		startTracking(sub);
+		link(dep, sub);
+		endTracking(sub);
+
+		startTracking(sub);
+		link(dep, sub);
+		endTracking(sub);
+
+		expect(untrack).not.toHaveBeenCalled();
+	});
 });
