@@ -37,6 +37,7 @@
 - `_untrackSubscriber` must remain idempotent because computed stores can call it both during dependency diffing and during unmount.
 - When a computed unmounts and detaches from a signal, that signal’s own lifecycle handling should execute, ensuring `onUnmount` callbacks fire even if dependencies changed seconds earlier.
 - After unmount, reset lifecycle state (`_capturedDependencies`, `_isUnmountScheduled`, `_activeMountCleanups`) so the next mount behaves like a fresh instance.
+- Disposer functions returned from `onMount` must invoke the currently registered cleanup immediately before removing it from internal bookkeeping so callers can tear down side effects on demand.
 
 ### Testing Guidance
 - Use fake timers to verify grace-period behaviour (subscribe → unsubscribe → advance timers → assert cleanup).

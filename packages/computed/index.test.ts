@@ -97,7 +97,7 @@ describe("computed", () => {
 	});
 
 	describe("lifecycle", () => {
-		it("does not run cleanup after disposer is called", () => {
+		it("runs cleanup immediately when disposer is called while mounted", () => {
 			vi.useFakeTimers();
 			try {
 				const source = signal(1);
@@ -111,9 +111,8 @@ describe("computed", () => {
 
 				dispose();
 				watcher.stop();
-				vi.runAllTimers();
 
-				expect(cleanup).not.toHaveBeenCalled();
+				expect(cleanup).toHaveBeenCalledTimes(1);
 			} finally {
 				vi.useRealTimers();
 			}

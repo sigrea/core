@@ -91,8 +91,13 @@ export class Signal<T = unknown> implements Dependency, LifecycleCapable {
 			this._mountCallbacks.delete(callback);
 			const cleanup = this._activeMountCleanups.get(callback);
 			if (cleanup !== undefined) {
-				this._cleanupFunctions.delete(cleanup);
 				this._activeMountCleanups.delete(callback);
+				this._cleanupFunctions.delete(cleanup);
+				try {
+					cleanup();
+				} catch (error) {
+					console.error("Cleanup function error:", error);
+				}
 			}
 		};
 	}
