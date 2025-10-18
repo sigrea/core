@@ -5,6 +5,10 @@ export function incrementBatchDepth(): void {
 }
 
 export function decrementBatchDepth(): number {
+	if (batchDepth === 0) {
+		return 0;
+	}
+
 	batchDepth -= 1;
 	return batchDepth;
 }
