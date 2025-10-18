@@ -1,4 +1,7 @@
-export type MountCallback = () => undefined | (() => void);
+// biome-ignore lint/suspicious/noConfusingVoidType: Mount callbacks must allow missing cleanup returns.
+export type MountCallback = () => void | (() => void);
+
+export type MountCleanup = ReturnType<MountCallback>;
 
 export type UnmountCallback = () => void;
 
