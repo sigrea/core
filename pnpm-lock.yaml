@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      alien-deepsignals:
+        specifier: ^0.2.7
+        version: 0.2.7(alien-signals@3.0.1)
       alien-signals:
         specifier: ^3.0.1
         version: 3.0.1
@@ -609,6 +612,11 @@ packages:
     resolution: {integrity: sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==}
     engines: {node: '>=0.4.0'}
     hasBin: true
+
+  alien-deepsignals@0.2.7:
+    resolution: {integrity: sha512-fERozTuMRWzO5fv9xBNk1Zm0ZxUllRPiMckoyQcEcCBZ4mpEiZhVnmmSqn26i5KwYnDcZxjS2LAo/o6QjzoEOQ==}
+    peerDependencies:
+      alien-signals: ^3.0.1
 
   alien-signals@3.0.1:
     resolution: {integrity: sha512-ec02Wv5iOg7yG979PH9ykv5KN/KHznOxMlKy/Jr8lnBo3T94d4MUGo7FVdM8B2fM0e94twzEcWCyWzfIyeV19g==}
@@ -2306,6 +2314,10 @@ snapshots:
       tinyrainbow: 2.0.0
 
   acorn@8.15.0: {}
+
+  alien-deepsignals@0.2.7(alien-signals@3.0.1):
+    dependencies:
+      alien-signals: 3.0.1
 
   alien-signals@3.0.1: {}
 

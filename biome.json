@@ -1,6 +1,13 @@
 {
 	"$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-	"linter": { "enabled": true },
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"suspicious": {
+				"noConfusingVoidType": "off"
+			}
+		}
+	},
 	"formatter": { "enabled": true },
 	"files": {
 		"ignore": ["dist/**"]
