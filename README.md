@@ -151,11 +151,16 @@ each reactive watcher is stopped automatically. If no scope is active, call the
 - `onMount` nests scopes, allowing each logic instance to register timers, effects, or subscriptions that are disposed via `onUnmount`.
 - `mountLogic`, `cleanupLogic`, and `cleanupLogics` mirror adapter behavior, making unit tests predictable.
 
+### defineLogic props quick reference
+
+- `defineLogic()` → no props; call the returned factory as `logic()`.
+- `defineLogic<Props>()` → props are required unless every key in `Props` is optional.
+- Optional props allow calling `logic()` or `logic({ ... })`; required props must be passed explicitly.
+
 ## Scope Cleanup Error Handling
 
-- By default Sigrea aggregates cleanup failures and rethrows them as an `AggregateError` when a scope disposes or when a cleanup is registered after disposal.
-- `setScopeCleanupErrorHandler` installs a process-wide hook (one per runtime). Remember to restore the previous handler in `finally` blocks or test `afterEach` hooks to avoid leaking suppression rules across consumers.
-- Returning `ScopeCleanupErrorResponse.Suppress` from the handler skips propagation for that cleanup only; other errors in the same disposal cycle are still reported unless individually suppressed.
+- Sigrea aggregates cleanup failures and rethrows them as an `AggregateError` when a scope disposes or when a cleanup is registered after disposal.
+- `setScopeCleanupErrorHandler` installs a process-wide hook. Use it sparingly, and reset the handler once you are done so other code paths are not affected.
 
 ## Development
 
