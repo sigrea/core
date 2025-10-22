@@ -1,5 +1,6 @@
-import { disposeLogic, isLogicInstance } from "../internals";
-import type { LogicArgs, LogicFunction, LogicInstance } from "../types";
+import { isLogicInstance } from "./instance";
+import { disposeLogic } from "./internals";
+import type { LogicArgs, LogicFunction, LogicInstance } from "./types";
 
 const tracked = new Set<LogicInstance<object>>();
 

@@ -1,12 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { onUnmount } from "../../lifecycle/onUnmount";
-import {
-	defineLogic,
-	disposeLogic,
-	isLogicInstance,
-	mountLogic,
-} from "../index";
+import { defineLogic } from "../defineLogic";
+import { isLogicInstance } from "../instance";
+import { disposeLogic } from "../internals";
+import { mountLogic } from "../testing";
 
 describe("logic internals", () => {
 	it("identifies logic instances", () => {

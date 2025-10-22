@@ -4,7 +4,8 @@ import { computed } from "../../core/computed";
 import { signal } from "../../core/signal";
 import { onMount } from "../../lifecycle/onMount";
 import { onUnmount } from "../../lifecycle/onUnmount";
-import { cleanupLogic, cleanupLogics, defineLogic, mountLogic } from "../index";
+import { defineLogic } from "../defineLogic";
+import { cleanupLogic, cleanupLogics, mountLogic } from "../testing";
 
 afterEach(() => {
 	cleanupLogics();

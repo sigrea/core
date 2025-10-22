@@ -1,13 +1,9 @@
 import { toValue } from "alien-deepsignals";
 
-import type { Computed } from "../../core/computed";
-import type { DeepSignal } from "../../core/deepSignal";
-import type { Signal } from "../../core/signal";
-import {
-	type WatchOptions,
-	type WatchStopHandle,
-	watch,
-} from "../../core/watch";
+import type { Computed } from "../core/computed";
+import type { DeepSignal } from "../core/deepSignal";
+import type { Signal } from "../core/signal";
+import { type WatchOptions, type WatchStopHandle, watch } from "../core/watch";
 
 type Listener = () => void;
 

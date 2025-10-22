@@ -1,12 +1,8 @@
-import {
-	type Scope,
-	disposeScope,
-	registerScopeCleanup,
-} from "../../core/scope";
+import { type Scope, disposeScope, registerScopeCleanup } from "../core/scope";
 
-import type { LogicInstance } from "../types";
+import type { LogicInstance } from "./types";
 
-interface LogicMetadata {
+export interface LogicMetadata {
 	target: object;
 	scope: Scope;
 	disposed: boolean;
@@ -16,7 +12,7 @@ interface LogicMetadata {
 
 const logicMetadataMap = new WeakMap<object, LogicMetadata>();
 
-function createMetadata(scope: Scope): LogicMetadata {
+export function createMetadata(scope: Scope): LogicMetadata {
 	return {
 		// Temporary placeholder; will be set in finalizeMetadata.
 		target: {} as object,
@@ -26,19 +22,22 @@ function createMetadata(scope: Scope): LogicMetadata {
 	};
 }
 
-function finalizeMetadata(metadata: LogicMetadata, target: object): void {
+export function finalizeMetadata(
+	metadata: LogicMetadata,
+	target: object,
+): void {
 	metadata.target = target;
 	logicMetadataMap.set(target, metadata);
 }
 
-function getLogicMetadata(value: unknown): LogicMetadata | undefined {
+export function getLogicMetadata(value: unknown): LogicMetadata | undefined {
 	if (typeof value !== "object" || value === null) {
 		return undefined;
 	}
 	return logicMetadataMap.get(value as object);
 }
 
-function disposeLogicInstance(metadata: LogicMetadata): void {
+export function disposeLogicInstance(metadata: LogicMetadata): void {
 	if (metadata.disposed) {
 		return;
 	}
@@ -60,20 +59,14 @@ function disposeLogicInstance(metadata: LogicMetadata): void {
 	}
 }
 
-function disposeLogic<T extends object>(value: LogicInstance<T>): void {
+export function disposeLogic<T extends object>(value: LogicInstance<T>): void {
 	const metadata = getLogicMetadata(value);
 	if (metadata !== undefined) {
 		disposeLogicInstance(metadata);
 	}
 }
 
-function isLogicInstance<T extends object>(
-	value: unknown,
-): value is LogicInstance<T> {
-	return getLogicMetadata(value) !== undefined;
-}
-
-function linkChildLogic<T extends object>(
+export function linkChildLogic<T extends object>(
 	parent: LogicMetadata,
 	child: LogicMetadata,
 	instance: LogicInstance<T>,
@@ -96,14 +89,3 @@ function linkChildLogic<T extends object>(
 
 	return instance;
 }
-
-export {
-	createMetadata,
-	disposeLogic,
-	disposeLogicInstance,
-	finalizeMetadata,
-	getLogicMetadata,
-	isLogicInstance,
-	linkChildLogic,
-};
-export type { LogicMetadata };

@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { computed } from "../../core/computed";
+import { deepSignal } from "../../core/deepSignal";
+import { signal } from "../../core/signal";
 import {
 	createComputedHandler,
 	createDeepSignalHandler,
 	createSignalHandler,
-} from ".";
-import { computed } from "../../core/computed";
-import { deepSignal } from "../../core/deepSignal";
-import { signal } from "../../core/signal";
+} from "../handlers";
 
 describe("createSignalHandler", () => {
 	it("subscribes and updates snapshots for signals", () => {
