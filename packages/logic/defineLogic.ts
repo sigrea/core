@@ -48,7 +48,19 @@ function createLogicFactory<TReturn extends object, TProps>(
 
 			return logic as LogicInstance<TReturn>;
 		} catch (error) {
-			disposeScope(scope);
+			try {
+				disposeScope(scope);
+			} catch (cleanupError) {
+				const aggregated: unknown[] =
+					cleanupError instanceof AggregateError
+						? [...cleanupError.errors]
+						: [cleanupError];
+				aggregated.push(error);
+				throw new AggregateError(
+					aggregated,
+					"Logic setup failed; scope cleanup also encountered errors.",
+				);
+			}
 			throw error;
 		}
 	}) as LogicFunction<TReturn, TProps>;
