@@ -24,8 +24,15 @@ export {
 	getCurrentScope,
 	registerScopeCleanup,
 	disposeScope,
+	setScopeCleanupErrorHandler,
+	ScopeCleanupErrorResponse,
 } from "./core/scope";
-export type { Cleanup } from "./core/scope";
+export type {
+	Cleanup,
+	ScopeCleanupErrorHandler,
+	ScopeCleanupErrorContext,
+	ScopeCleanupPhase,
+} from "./core/scope";
 
 // signal
 export { signal } from "./core/signal";

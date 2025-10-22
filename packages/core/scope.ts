@@ -1,9 +1,113 @@
 export type Cleanup = () => void;
 
+export type ScopeCleanupPhase = "dispose" | "immediate";
+
+export interface ScopeCleanupErrorContext {
+	scope: Scope;
+	scopeId: number;
+	cleanup: Cleanup;
+	index: number;
+	total: number;
+	phase: ScopeCleanupPhase;
+}
+
+export enum ScopeCleanupErrorResponse {
+	Propagate = "propagate",
+	Suppress = "suppress",
+}
+
+export type ScopeCleanupErrorHandler = (
+	error: unknown,
+	context: ScopeCleanupErrorContext,
+) => ScopeCleanupErrorResponse | void;
+
+let cleanupErrorHandler: ScopeCleanupErrorHandler | undefined;
+
+export function setScopeCleanupErrorHandler(
+	handler?: ScopeCleanupErrorHandler,
+): void {
+	cleanupErrorHandler = handler;
+}
+
+let nextScopeId = 1;
+
+function collectErrors(target: unknown, errors: unknown[]): void {
+	if (target instanceof AggregateError) {
+		for (const error of target.errors) {
+			errors.push(error);
+		}
+		return;
+	}
+	errors.push(target);
+}
+
+function handleCleanupError(
+	scope: Scope,
+	cleanup: Cleanup,
+	index: number,
+	total: number,
+	phase: ScopeCleanupPhase,
+	error: unknown,
+	errors: unknown[],
+): void {
+	if (cleanupErrorHandler !== undefined) {
+		try {
+			const response = cleanupErrorHandler(error, {
+				scope,
+				scopeId: scope.id,
+				cleanup,
+				index,
+				total,
+				phase,
+			});
+
+			if (response === ScopeCleanupErrorResponse.Suppress) {
+				return;
+			}
+		} catch (handlerError) {
+			collectErrors(handlerError, errors);
+		}
+	}
+
+	collectErrors(error, errors);
+}
+
+function runCleanupWithHandling(
+	scope: Scope,
+	cleanup: Cleanup,
+	index: number,
+	total: number,
+	phase: ScopeCleanupPhase,
+	errors: unknown[],
+): void {
+	try {
+		cleanup();
+	} catch (error) {
+		handleCleanupError(scope, cleanup, index, total, phase, error, errors);
+	}
+}
+
+function throwIfErrors(
+	errors: unknown[],
+	scope: Scope,
+	phase: ScopeCleanupPhase,
+): void {
+	if (errors.length === 0) {
+		return;
+	}
+
+	const phaseLabel =
+		phase === "dispose"
+			? "Scope cleanup failed"
+			: "Immediate scope cleanup failed";
+	throw new AggregateError(errors, `${phaseLabel} (scope #${scope.id}).`);
+}
+
 export class Scope {
 	private readonly cleanups = new Set<Cleanup>();
 	private disposed = false;
 	private removeFromParent: (() => void) | undefined;
+	private readonly scopeId = nextScopeId++;
 
 	constructor(private readonly parent?: Scope) {}
 
@@ -22,8 +126,9 @@ export class Scope {
 
 	addCleanup(cleanup: Cleanup): () => void {
 		if (this.disposed) {
-			// If the scope is already disposed, execute immediately to avoid leaks.
-			cleanup();
+			const errors: unknown[] = [];
+			runCleanupWithHandling(this, cleanup, 0, 1, "immediate", errors);
+			throwIfErrors(errors, this, "immediate");
 			return () => {
 				// noop removal; cleanup already executed.
 			};
@@ -56,14 +161,23 @@ export class Scope {
 		const cleanups = Array.from(this.cleanups);
 		this.cleanups.clear();
 
+		const errors: unknown[] = [];
+		const total = cleanups.length;
+
 		for (let index = cleanups.length - 1; index >= 0; index -= 1) {
 			const cleanup = cleanups[index];
-			try {
-				cleanup();
-			} catch {
-				// TODO(sigrea-reactivity): Consider surfacing cleanup errors via user-provided logger hook.
-			}
+			const executionIndex = total - 1 - index;
+			runCleanupWithHandling(
+				this,
+				cleanup,
+				executionIndex,
+				total,
+				"dispose",
+				errors,
+			);
 		}
+
+		throwIfErrors(errors, this, "dispose");
 	}
 
 	attachToParent(detach: () => void): void {
@@ -72,6 +186,10 @@ export class Scope {
 
 	get isDisposed(): boolean {
 		return this.disposed;
+	}
+
+	get id(): number {
+		return this.scopeId;
 	}
 
 	get parentScope(): Scope | undefined {
