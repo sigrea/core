@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { onUnmount } from ".";
 import { onMount } from "../onMount";
+import { onUnmount } from "../onUnmount";
 
 describe("onUnmount", () => {
 	it("registers cleanup within active scope", () => {

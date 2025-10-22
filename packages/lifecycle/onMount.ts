@@ -1,10 +1,10 @@
-import type { Cleanup, Scope } from "../../core/scope";
+import type { Cleanup, Scope } from "../core/scope";
 import {
 	createScope,
 	getCurrentScope,
 	registerScopeCleanup,
 	runWithScope,
-} from "../../core/scope";
+} from "../core/scope";
 
 export interface MountOptions {
 	parent?: Scope;

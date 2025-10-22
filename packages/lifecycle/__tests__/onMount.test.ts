@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { onMount } from ".";
+import { onMount } from "../onMount";
 import { onUnmount } from "../onUnmount";
 
 describe("onMount", () => {

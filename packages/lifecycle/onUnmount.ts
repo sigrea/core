@@ -1,9 +1,9 @@
-import type { Cleanup, Scope } from "../../core/scope";
+import type { Cleanup, Scope } from "../core/scope";
 import {
 	disposeScope,
 	getCurrentScope,
 	registerScopeCleanup,
-} from "../../core/scope";
+} from "../core/scope";
 
 export function onUnmount(scope: Scope): void;
 export function onUnmount(callback: Cleanup): void;
