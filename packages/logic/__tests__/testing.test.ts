@@ -44,4 +44,33 @@ describe("logic testing utilities", () => {
 
 		expect(cleanup).toHaveBeenCalledTimes(2);
 	});
+
+	it("aggregates errors when cleanupLogics encounters failures", () => {
+		const cleanup = vi.fn(() => {
+			throw new Error("cleanup failure");
+		});
+
+		const Logic = defineLogic()(() => {
+			onUnmount(() => {
+				cleanup();
+				throw new Error("teardown failure");
+			});
+			return {};
+		});
+
+		mountLogic(Logic);
+		mountLogic(Logic);
+
+		let caught: unknown;
+		try {
+			cleanupLogics();
+		} catch (error) {
+			caught = error;
+		}
+
+		expect(cleanup).toHaveBeenCalledTimes(2);
+		expect(caught).toBeInstanceOf(AggregateError);
+		const aggregate = caught as AggregateError;
+		expect(aggregate.errors).toHaveLength(2);
+	});
 });

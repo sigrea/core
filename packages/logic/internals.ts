@@ -12,6 +12,16 @@ export interface LogicMetadata {
 
 const logicMetadataMap = new WeakMap<object, LogicMetadata>();
 
+function collectErrors(target: unknown, errors: unknown[]): void {
+	if (target instanceof AggregateError) {
+		for (const error of target.errors) {
+			errors.push(error);
+		}
+		return;
+	}
+	errors.push(target);
+}
+
 export function createMetadata(scope: Scope): LogicMetadata {
 	return {
 		// Temporary placeholder; will be set in finalizeMetadata.
@@ -47,15 +57,29 @@ export function disposeLogicInstance(metadata: LogicMetadata): void {
 
 	const children = Array.from(metadata.children);
 	metadata.children.clear();
+	const errors: unknown[] = [];
+
 	for (const child of children) {
-		disposeLogicInstance(child);
+		try {
+			disposeLogicInstance(child);
+		} catch (error) {
+			collectErrors(error, errors);
+		}
 	}
 
-	disposeScope(metadata.scope);
+	try {
+		disposeScope(metadata.scope);
+	} catch (error) {
+		collectErrors(error, errors);
+	}
 
 	if (metadata.parent !== undefined) {
 		metadata.parent.children.delete(metadata);
 		metadata.parent = undefined;
+	}
+
+	if (errors.length > 0) {
+		throw new AggregateError(errors, "Failed to dispose logic instance.");
 	}
 }
 
