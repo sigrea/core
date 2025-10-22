@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { signal } from ".";
 import { onMount } from "../../lifecycle/onMount";
 import { onUnmount } from "../../lifecycle/onUnmount";
-import { effect } from "../effect";
+import { signal } from "../signal";
+import { watchEffect } from "../watchEffect";
 
 describe("signal", () => {
 	it("exposes .value getter/setter", () => {
@@ -19,7 +19,7 @@ describe("signal", () => {
 		const count = signal(1);
 		let runs = 0;
 
-		const stop = effect(() => {
+		const stop = watchEffect(() => {
 			runs += 1;
 			count.peek();
 		});
@@ -46,7 +46,7 @@ describe("signal", () => {
 		let runs = 0;
 
 		const scope = onMount(() => {
-			effect(() => {
+			watchEffect(() => {
 				runs += 1;
 				count.value;
 			});

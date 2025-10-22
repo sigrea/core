@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { watch, watchEffect } from ".";
 import { onMount } from "../../lifecycle/onMount";
 import { onUnmount } from "../../lifecycle/onUnmount";
 import { deepSignal } from "../deepSignal";
 import { signal } from "../signal";
+import { watch } from "../watch";
 
 describe("watch", () => {
 	it("invokes callback when source changes", () => {
@@ -139,44 +139,5 @@ describe("watch", () => {
 		expect(counts).toEqual([0, 1, 2]);
 
 		stop();
-	});
-});
-
-describe("watchEffect", () => {
-	it("runs effect and stops via returned disposer", () => {
-		const count = signal(0);
-		let runs = 0;
-
-		const stop = watchEffect(() => {
-			runs += 1;
-			count.value;
-		});
-
-		expect(runs).toBe(1);
-
-		count.value = 1;
-		expect(runs).toBe(2);
-
-		stop();
-		count.value = 2;
-		expect(runs).toBe(2);
-	});
-
-	it("allows watchEffect stop handle to be called repeatedly", () => {
-		const count = signal(0);
-		let runs = 0;
-
-		const stop = watchEffect(() => {
-			runs += 1;
-			count.value;
-		});
-
-		expect(runs).toBe(1);
-
-		stop();
-		expect(() => stop()).not.toThrow();
-
-		count.value = 1;
-		expect(runs).toBe(1);
 	});
 });

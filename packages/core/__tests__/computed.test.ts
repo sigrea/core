@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { computed } from ".";
-import { effect } from "../effect";
+import { computed } from "../computed";
 import { signal } from "../signal";
+import { watchEffect } from "../watchEffect";
 
 describe("computed", () => {
 	it("derives values from signals", () => {
@@ -20,7 +20,7 @@ describe("computed", () => {
 		const doubled = computed(() => count.value * 2);
 		let runs = 0;
 
-		const stop = effect(() => {
+		const stop = watchEffect(() => {
 			runs += 1;
 			doubled.peek();
 		});

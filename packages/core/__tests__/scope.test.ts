@@ -6,7 +6,7 @@ import {
 	getCurrentScope,
 	registerScopeCleanup,
 	runWithScope,
-} from ".";
+} from "../scope";
 
 describe("reactivity scope", () => {
 	it("activates scope while running and restores afterwards", () => {

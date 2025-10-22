@@ -1,26 +1,20 @@
 import {
-	type Computed as AlienComputed,
-	type Signal as AlienSignal,
-	type WatchCallback as AlienWatchCallback,
-	type WatchEffect as AlienWatchEffect,
-	type WatchOptions as AlienWatchOptions,
-	type WatchSource as AlienWatchSource,
-	watch as createWatch,
+	type WatchEffect,
+	type WatchCallback as _WatchCallback,
+	type WatchOptions as _WatchOptions,
+	type WatchSource as _WatchSource,
+	watch as _watch,
 } from "alien-deepsignals";
 
-import type { Computed } from "../computed";
-import type { DeepSignal } from "../deepSignal";
-import { getCurrentScope, registerScopeCleanup } from "../scope";
-import type { Signal } from "../signal";
+import type { Computed } from "./computed";
+import type { DeepSignal } from "./deepSignal";
+import { getCurrentScope, registerScopeCleanup } from "./scope";
+import type { Signal } from "./signal";
 
 export type WatchStopHandle = () => void;
+export type WatchOptions<Immediate = boolean> = _WatchOptions<Immediate>;
+export type WatchCallback<V = unknown, OV = unknown> = _WatchCallback<V, OV>;
 
-export type WatchOptions<Immediate = boolean> = AlienWatchOptions<Immediate>;
-export type WatchEffect = AlienWatchEffect;
-export type WatchCallback<V = unknown, OV = unknown> = AlienWatchCallback<
-	V,
-	OV
->;
 type SingleWatchSource<T> =
 	| Signal<T>
 	| Computed<T>
@@ -32,7 +26,7 @@ type WatchSourceList<T extends readonly unknown[]> = {
 	[K in keyof T]: SingleWatchSource<T[K]>;
 };
 
-type InnerWatchSource<T> = AlienWatchSource<T>;
+type InnerWatchSource<T> = _WatchSource<T>;
 
 export function watch<T extends readonly unknown[]>(
 	source: WatchSourceList<T>,
@@ -57,10 +51,10 @@ export function watch(
 	const innerSource = source as
 		| InnerWatchSource<unknown>
 		| InnerWatchSource<unknown>[]
-		| AlienWatchEffect
+		| WatchEffect
 		| object;
 
-	const handle = createWatch(
+	const handle = _watch(
 		innerSource,
 		callback as WatchCallback | undefined,
 		options,
@@ -84,8 +78,4 @@ export function watch(
 	}
 
 	return stop;
-}
-
-export function watchEffect(effect: WatchEffect): WatchStopHandle {
-	return watch(effect);
 }

@@ -1,17 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { effect } from ".";
 import { onMount } from "../../lifecycle/onMount";
 import { onUnmount } from "../../lifecycle/onUnmount";
 import { signal } from "../signal";
+import { watchEffect } from "../watchEffect";
 
-describe("effect", () => {
-	it("runs immediately and reacts to signal changes", () => {
+describe("watchEffect", () => {
+	it("runs effect reactively until stopped", () => {
 		const count = signal(0);
 		let runs = 0;
 
-		const stop = effect(() => {
+		const stop = watchEffect(() => {
 			runs += 1;
+			// access reactive dependency
 			count.value;
 		});
 
@@ -21,19 +22,22 @@ describe("effect", () => {
 		expect(runs).toBe(2);
 
 		stop();
-
 		count.value = 2;
 		expect(runs).toBe(2);
 	});
 
-	it("stops automatically when scope is unmounted", () => {
+	it("tears down automatically when enclosing scope unmounts", () => {
 		const count = signal(0);
 		let runs = 0;
 
 		const scope = onMount(() => {
-			effect(() => {
+			watchEffect(() => {
 				runs += 1;
 				count.value;
+			});
+
+			onUnmount(() => {
+				runs += 100;
 			});
 		});
 
@@ -43,8 +47,9 @@ describe("effect", () => {
 		expect(runs).toBe(2);
 
 		onUnmount(scope);
+		expect(runs).toBe(102);
 
 		count.value = 2;
-		expect(runs).toBe(2);
+		expect(runs).toBe(102);
 	});
 });

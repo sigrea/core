@@ -1,11 +1,11 @@
-type Cleanup = () => void;
+export type Cleanup = () => void;
 
-class ScopeImpl {
+export class Scope {
 	private readonly cleanups = new Set<Cleanup>();
 	private disposed = false;
 	private removeFromParent: (() => void) | undefined;
 
-	constructor(private readonly parent?: ScopeImpl) {}
+	constructor(private readonly parent?: Scope) {}
 
 	run<T>(callback: () => T): T {
 		if (this.disposed) {
@@ -74,21 +74,21 @@ class ScopeImpl {
 		return this.disposed;
 	}
 
-	get parentScope(): ScopeImpl | undefined {
+	get parentScope(): Scope | undefined {
 		return this.parent;
 	}
 }
 
-let activeScope: ScopeImpl | undefined;
+let activeScope: Scope | undefined;
 
-function setActiveScope(scope: ScopeImpl | undefined): ScopeImpl | undefined {
+function setActiveScope(scope: Scope | undefined): Scope | undefined {
 	const previous = activeScope;
 	activeScope = scope;
 	return previous;
 }
 
-function createScope(parent?: ScopeImpl): ScopeImpl {
-	const scope = new ScopeImpl(parent);
+export function createScope(parent?: Scope): Scope {
+	const scope = new Scope(parent);
 	if (parent !== undefined) {
 		const detach = parent.addCleanup(() => scope.dispose());
 		scope.attachToParent(detach);
@@ -96,17 +96,17 @@ function createScope(parent?: ScopeImpl): ScopeImpl {
 	return scope;
 }
 
-function runWithScope<T>(scope: ScopeImpl, callback: () => T): T {
+export function runWithScope<T>(scope: Scope, callback: () => T): T {
 	return scope.run(callback);
 }
 
-function getCurrentScope(): ScopeImpl | undefined {
+export function getCurrentScope(): Scope | undefined {
 	return activeScope;
 }
 
-function registerScopeCleanup(
+export function registerScopeCleanup(
 	cleanup: Cleanup,
-	scope: ScopeImpl | undefined = activeScope,
+	scope: Scope | undefined = activeScope,
 ): () => void {
 	if (scope === undefined) {
 		return () => {
@@ -117,17 +117,6 @@ function registerScopeCleanup(
 	return scope.addCleanup(cleanup);
 }
 
-export type Scope = ScopeImpl;
-export type { Cleanup };
-
-function disposeScope(scope: ScopeImpl): void {
+export function disposeScope(scope: Scope): void {
 	scope.dispose();
 }
-
-export {
-	createScope,
-	disposeScope,
-	getCurrentScope,
-	registerScopeCleanup,
-	runWithScope,
-};

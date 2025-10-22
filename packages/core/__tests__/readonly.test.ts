@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { readonly } from ".";
+import { readonly } from "../readonly";
 import { signal } from "../signal";
 
 describe("readonly", () => {

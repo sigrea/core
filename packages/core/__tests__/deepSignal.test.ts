@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deepSignal } from ".";
+import { deepSignal } from "../deepSignal";
 import { watch } from "../watch";
 
 describe("deepSignal", () => {
