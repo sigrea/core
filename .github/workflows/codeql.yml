@@ -9,7 +9,6 @@ permissions:
   security-events: write
 jobs:
   analyze:
-    if: ${{ false }} # temporarily disabled until the repository is public
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
