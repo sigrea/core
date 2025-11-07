@@ -70,6 +70,168 @@ describe("watch", () => {
 		stop();
 	});
 
+	it("tracks deep signals returned from object sources when deep is true", () => {
+		const state = deepSignal({ nested: { flag: false } });
+		let runs = 0;
+
+		const stop = watch(
+			() => ({ nested: state.nested }),
+			() => {
+				runs += 1;
+			},
+			{ deep: true },
+		);
+
+		state.nested.flag = true;
+
+		expect(runs).toBe(1);
+
+		stop();
+	});
+
+	it("does not react to nested deep signal changes when deep is false", () => {
+		const state = deepSignal({ nested: { flag: false } });
+		let runs = 0;
+
+		const stop = watch(
+			state,
+			() => {
+				runs += 1;
+			},
+			{ deep: false },
+		);
+
+		state.nested.flag = true;
+
+		expect(runs).toBe(0);
+
+		stop();
+	});
+
+	it("does not react to nested deep signal entries in source arrays when deep is false", () => {
+		const state = deepSignal({ nested: { flag: false } });
+		let runs = 0;
+
+		const stop = watch(
+			[state],
+			() => {
+				runs += 1;
+			},
+			{ deep: false },
+		);
+
+		state.nested.flag = true;
+
+		expect(runs).toBe(0);
+
+		stop();
+	});
+
+	it("does not react to nested deep signal changes by default", () => {
+		const state = deepSignal({ nested: { flag: false } });
+		let runs = 0;
+
+		const stop = watch(state, () => {
+			runs += 1;
+		});
+
+		state.nested.flag = true;
+
+		expect(runs).toBe(0);
+
+		stop();
+	});
+
+	it("reacts to top-level deep signal changes by default", () => {
+		const state = deepSignal({ count: 0 });
+		let runs = 0;
+
+		const stop = watch(state, () => {
+			runs += 1;
+		});
+
+		state.count = 1;
+
+		expect(runs).toBe(1);
+
+		stop();
+	});
+
+	it("reacts to top-level deep signal changes even when deep is false", () => {
+		const state = deepSignal({ count: 0 });
+		let runs = 0;
+
+		const stop = watch(
+			state,
+			() => {
+				runs += 1;
+			},
+			{ deep: false },
+		);
+
+		state.count = 1;
+
+		expect(runs).toBe(1);
+
+		stop();
+	});
+
+	it("reacts to nested deep signal changes when using a finite depth", () => {
+		const state = deepSignal({ nested: { flag: false } });
+		let runs = 0;
+
+		const stop = watch(
+			state,
+			() => {
+				runs += 1;
+			},
+			{ deep: 1 },
+		);
+
+		state.nested.flag = true;
+
+		expect(runs).toBe(1);
+
+		stop();
+	});
+
+	it("does not trigger callbacks when unrelated sources perform no-op writes", () => {
+		const count = signal(0);
+		const state = deepSignal({ flag: false });
+		let runs = 0;
+
+		const stop = watch([count, state], () => {
+			runs += 1;
+		});
+
+		count.value = 0;
+		expect(runs).toBe(0);
+
+		state.flag = true;
+		expect(runs).toBe(1);
+
+		stop();
+	});
+
+	it("updates array length signals when adding elements via index assignment", () => {
+		const state = deepSignal({ items: [] as number[] });
+		const lengths: number[] = [];
+
+		const stop = watch(
+			() => state.items.length,
+			(value) => {
+				lengths.push(value);
+			},
+			{ immediate: true },
+		);
+
+		state.items[state.items.length] = 42;
+
+		expect(lengths).toEqual([0, 1]);
+
+		stop();
+	});
+
 	it("cleans up automatically when scope is unmounted", () => {
 		const count = signal(0);
 		let runs = 0;

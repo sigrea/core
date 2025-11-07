@@ -1,6 +1,5 @@
-import type { WatchEffect } from "alien-deepsignals";
-import type { WatchStopHandle } from "./watch";
 import { watch } from "./watch";
+import type { WatchEffect, WatchStopHandle } from "./watch";
 
 export type { WatchEffect };
 

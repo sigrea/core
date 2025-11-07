@@ -1,4 +1,4 @@
-import { toValue } from "alien-deepsignals";
+import { toValue } from "../core/reactivity";
 
 import type { Computed } from "../core/computed";
 import type { DeepSignal } from "../core/deepSignal";
