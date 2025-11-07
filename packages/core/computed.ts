@@ -1,21 +1,21 @@
 import {
-	SignalFlags,
-	ReactiveFlags,
 	type Link,
+	ReactiveFlags,
 	type ReactiveNode,
+	SignalFlags,
 	getActiveSubscriber,
 	getCurrentCycle,
-	incrementCycle,
 	hasChanged,
+	incrementCycle,
 	link,
 	setActiveSubscriber,
-	shouldUpdate,
 	shallowPropagate,
+	shouldUpdate,
 	unlink,
 	untracked,
 } from "./reactivity";
 
-export class Computed<T = any> implements ReactiveNode {
+export class Computed<T = unknown> implements ReactiveNode {
 	readonly [SignalFlags.IS_SIGNAL] = true;
 	currentValue: T | undefined = undefined;
 	subs: Link | undefined = undefined;
@@ -37,7 +37,11 @@ export class Computed<T = any> implements ReactiveNode {
 		if (subscriber !== undefined) {
 			link(this, subscriber, getCurrentCycle());
 		}
-		return this.currentValue!;
+		const value = this.currentValue;
+		if (value === undefined) {
+			throw new Error("Computed value accessed before initialization.");
+		}
+		return value;
 	}
 
 	get value(): T {

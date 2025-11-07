@@ -1,23 +1,23 @@
 import {
 	Effect,
 	NOOP,
+	SignalFlags,
 	hasChanged,
 	isArray,
 	isFunction,
+	isMap,
 	isObject,
 	isPlainObject,
 	isSet,
 	isSignal,
-	isMap,
-	SignalFlags,
 } from "./reactivity";
 
 import type { Computed } from "./computed";
 import {
-	isDeepSignal,
-	trackDeepSignalVersion,
-	trackDeepSignalShallowVersion,
 	type DeepSignal,
+	isDeepSignal,
+	trackDeepSignalShallowVersion,
+	trackDeepSignalVersion,
 } from "./deepSignal";
 import { getCurrentScope, registerScopeCleanup } from "./scope";
 import type { Signal } from "./signal";
@@ -46,7 +46,7 @@ type WatchSourceList<T extends readonly unknown[]> = {
 	[K in keyof T]: SingleWatchSource<T[K]>;
 };
 
-export type WatchCallback<V = any, OV = any> = (
+export type WatchCallback<V = unknown, OV = unknown> = (
 	value: V,
 	oldValue: OV,
 	onCleanup: OnCleanup,
@@ -71,11 +71,11 @@ class Watcher {
 	private oldValue: unknown;
 	private stopped = false;
 
-		constructor(
-			source: unknown,
-			callback: WatchCallback | undefined,
-			options: WatchOptions,
-		) {
+	constructor(
+		source: unknown,
+		callback: WatchCallback | undefined,
+		options: WatchOptions,
+	) {
 		this.callback = callback;
 		this.once = options.once === true;
 		this.deepOption = options.deep;
@@ -88,9 +88,10 @@ class Watcher {
 		);
 		this.getter = this.wrapGetterForDeepOption(getter);
 		this.isMultiSource = isMultiSource;
-		this.oldValue = isMultiSource && isArray(source)
-			? new Array(source.length).fill(INITIAL_WATCHER_VALUE)
-			: INITIAL_WATCHER_VALUE;
+		this.oldValue =
+			isMultiSource && isArray(source)
+				? new Array(source.length).fill(INITIAL_WATCHER_VALUE)
+				: INITIAL_WATCHER_VALUE;
 
 		this.effect = new Effect(() => this.getter());
 		this.effect.scheduler = (immediateFirstRun?: boolean) => {
@@ -155,7 +156,7 @@ class Watcher {
 
 			const fallbackChanged = this.computeFallbackChanged(newValue);
 
-				const changed = versionsChanged || fallbackChanged;
+			const changed = versionsChanged || fallbackChanged;
 
 			if (process.env.DEBUG_WATCH === "true") {
 				console.log("watch-debug", {
@@ -170,11 +171,7 @@ class Watcher {
 			if (changed) {
 				const formattedOldValue = this.normalizeOldValue();
 				this.runCleanup();
-				this.callback(
-					newValue,
-					formattedOldValue,
-					this.registerCleanup,
-				);
+				this.callback(newValue, formattedOldValue, this.registerCleanup);
 				this.oldValue = newValue;
 				if (this.once) {
 					this.stop();
@@ -222,7 +219,8 @@ class Watcher {
 		if (isArray(source)) {
 			const arraySource = source as readonly unknown[];
 			return {
-				getter: () => arraySource.map((entry) => this.normalizeArrayEntry(entry)),
+				getter: () =>
+					arraySource.map((entry) => this.normalizeArrayEntry(entry)),
 				isMultiSource: true,
 			};
 		}
@@ -352,8 +350,7 @@ class Watcher {
 			return false;
 		}
 
-		let changed =
-			this.currentVersions.length !== this.lastVersions.length;
+		let changed = this.currentVersions.length !== this.lastVersions.length;
 		if (!changed) {
 			for (let index = 0; index < this.currentVersions.length; index += 1) {
 				if (this.currentVersions[index] !== this.lastVersions[index]) {
@@ -386,12 +383,12 @@ class Watcher {
 			return 1;
 		}
 		if (this.deepOption === true) {
-			return Infinity;
+			return Number.POSITIVE_INFINITY;
 		}
 		if (typeof this.deepOption === "number") {
 			return this.deepOption;
 		}
-		return Infinity;
+		return Number.POSITIVE_INFINITY;
 	}
 
 	private resolveVersionMode(): "deep" | "shallow" {
@@ -415,15 +412,18 @@ class Watcher {
 
 	private traverse(
 		value: unknown,
-		depth = Infinity,
+		depth = Number.POSITIVE_INFINITY,
 		seen?: Set<unknown>,
 	): unknown {
 		if (isDeepSignal(value)) {
-			if (depth === Infinity) {
+			if (depth === Number.POSITIVE_INFINITY) {
 				this.recordVersion(value as DeepSignal<object>, "deep");
 				return value;
 			}
-			if (typeof this.deepOption === "number" && Number.isFinite(this.deepOption)) {
+			if (
+				typeof this.deepOption === "number" &&
+				Number.isFinite(this.deepOption)
+			) {
 				if (depth <= 0) {
 					const mode = this.deepOption === 0 ? "shallow" : "deep";
 					this.recordVersion(value as DeepSignal<object>, mode);
@@ -495,12 +495,9 @@ export function watch(
 	const watcher = new Watcher(source, callback, options);
 
 	const scope = getCurrentScope();
-	const detach = registerScopeCleanup(
-		() => {
-			watcher.stop();
-		},
-		scope,
-	);
+	const detach = registerScopeCleanup(() => {
+		watcher.stop();
+	}, scope);
 	watcher.setScopeDetacher(detach);
 
 	watcher.initialize(options.immediate);

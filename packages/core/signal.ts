@@ -1,8 +1,8 @@
 import {
-	SignalFlags,
-	ReactiveFlags,
 	type Link,
+	ReactiveFlags,
 	type ReactiveNode,
+	SignalFlags,
 	flushSchedulerQueue,
 	getActiveSubscriber,
 	getCurrentCycle,
@@ -10,11 +10,11 @@ import {
 	isBatching,
 	link,
 	propagate,
-	shouldUpdate,
 	shallowPropagate,
+	shouldUpdate,
 } from "./reactivity";
 
-export class SignalNode<T = any> implements ReactiveNode {
+export class SignalNode<T = unknown> implements ReactiveNode {
 	readonly [SignalFlags.IS_SIGNAL] = true;
 	subs: Link | undefined = undefined;
 	subsTail: Link | undefined = undefined;

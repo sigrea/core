@@ -1,4 +1,5 @@
 import {
+	type ReactiveNode,
 	getActiveSubscriber,
 	getCurrentCycle,
 	isArray,
@@ -6,8 +7,6 @@ import {
 	link,
 	pauseTracking,
 	resumeTracking,
-	type ReactiveNode,
-	untracked,
 } from "./reactivity";
 
 import { SignalNode } from "./signal";
@@ -15,8 +14,8 @@ import { SignalNode } from "./signal";
 const RAW_SYMBOL = Symbol("sigrea.raw");
 const NODE_SYMBOL = Symbol("sigrea.node");
 
-const rawToNode = new WeakMap<object, DeepSignalNode<any>>();
-const proxyToNode = new WeakMap<object, DeepSignalNode<any>>();
+const rawToNode = new WeakMap<object, DeepSignalNode<object>>();
+const proxyToNode = new WeakMap<object, DeepSignalNode<object>>();
 
 const wellKnownSymbols = new Set(
 	Object.getOwnPropertyNames(Symbol)
@@ -29,17 +28,21 @@ const supportedConstructors = new Set<ObjectConstructor | ArrayConstructor>([
 	Array,
 ]);
 
-const hasOwn = (target: object, key: PropertyKey): boolean =>
-	Object.prototype.hasOwnProperty.call(target, key);
+function hasOwn(target: object, key: PropertyKey): boolean {
+	return Object.prototype.hasOwnProperty.call(target, key);
+}
 
-const isIndexKey = (key: PropertyKey): boolean =>
-	typeof key === "string" &&
-	key !== "NaN" &&
-	key !== "Infinity" &&
-	String(Number(key)) === key &&
-	Number(key) >= 0;
+function isIndexKey(key: PropertyKey): boolean {
+	return (
+		typeof key === "string" &&
+		key !== "NaN" &&
+		key !== "Infinity" &&
+		String(Number(key)) === key &&
+		Number(key) >= 0
+	);
+}
 
-const isObservable = (value: unknown): value is object => {
+function isObservable(value: unknown): value is object {
 	if (!isObject(value) || value === null) {
 		return false;
 	}
@@ -48,25 +51,22 @@ const isObservable = (value: unknown): value is object => {
 		typeof ctor === "function" &&
 		supportedConstructors.has(ctor as ObjectConstructor | ArrayConstructor)
 	);
-};
+}
 
 class DeepSignalNode<T extends object> {
 	readonly raw: T;
 	readonly proxy: DeepSignal<T>;
 
-	private readonly propertySignals = new Map<PropertyKey, SignalNode<any>>();
+	private readonly propertySignals = new Map<PropertyKey, SignalNode<unknown>>();
 	private readonly propertySubscribers = new Map<
 		PropertyKey,
 		WeakMap<ReactiveNode, number>
 	>();
 	private readonly propertyChildren = new Map<
 		PropertyKey,
-		DeepSignalNode<any>
+		DeepSignalNode<object>
 	>();
-	private readonly parents = new Map<
-		DeepSignalNode<any>,
-		Set<PropertyKey>
-	>();
+	private readonly parents = new Map<DeepSignalNode<object>, Set<PropertyKey>>();
 	private readonly iterationSignal = new SignalNode(0);
 	private readonly versionSignal = new SignalNode(0);
 	private readonly shallowVersionSignal = new SignalNode(0);
@@ -94,7 +94,7 @@ class DeepSignalNode<T extends object> {
 		this.iterationSignal.set(this.iterationSignal.peek() + 1);
 	}
 
-	private createHandlers(): ProxyHandler<any> {
+	private createHandlers(): ProxyHandler<T> {
 		return {
 			get: (target, key, receiver) => this.handleGet(target, key, receiver),
 			set: (target, key, value, receiver) =>
@@ -109,11 +109,7 @@ class DeepSignalNode<T extends object> {
 		};
 	}
 
-	private handleGet(
-		target: T,
-		key: PropertyKey,
-		receiver: unknown,
-	): unknown {
+	private handleGet(target: T, key: PropertyKey, receiver: unknown): unknown {
 		if (key === RAW_SYMBOL) {
 			return target;
 		}
@@ -233,9 +229,7 @@ class DeepSignalNode<T extends object> {
 	private handleOwnKeys(target: T): ArrayLike<string | symbol> {
 		this.trackIteration();
 		const keys = Reflect.ownKeys(target);
-		return keys.map((key) =>
-			typeof key === "number" ? String(key) : key,
-		);
+		return keys.map((key) => (typeof key === "number" ? String(key) : key));
 	}
 
 	private handleDefineProperty(
@@ -310,7 +304,7 @@ class DeepSignalNode<T extends object> {
 		return result;
 	}
 
-	private ensurePropertySignal(key: PropertyKey): SignalNode<any> {
+	private ensurePropertySignal(key: PropertyKey): SignalNode<unknown> {
 		let signal = this.propertySignals.get(key);
 		if (signal === undefined) {
 			const target = this.raw as Record<PropertyKey, unknown>;
@@ -334,7 +328,11 @@ class DeepSignalNode<T extends object> {
 
 	private wrapValueForKey(key: PropertyKey, value: unknown): unknown {
 		const unwrapped = this.unwrap(value);
-		if (!isObject(unwrapped) || unwrapped === null || !isObservable(unwrapped)) {
+		if (
+			!isObject(unwrapped) ||
+			unwrapped === null ||
+			!isObservable(unwrapped)
+		) {
 			this.detachChild(key);
 			return unwrapped;
 		}
@@ -344,7 +342,7 @@ class DeepSignalNode<T extends object> {
 		return childNode.proxy;
 	}
 
-	private attachChild(key: PropertyKey, child: DeepSignalNode<any>): void {
+	private attachChild(key: PropertyKey, child: DeepSignalNode<object>): void {
 		if (child === this) {
 			this.propertyChildren.set(key, child);
 			return;
@@ -369,7 +367,7 @@ class DeepSignalNode<T extends object> {
 		}
 	}
 
-	addParent(parent: DeepSignalNode<any>, key: PropertyKey): void {
+	addParent(parent: DeepSignalNode<object>, key: PropertyKey): void {
 		if (parent === this) {
 			return;
 		}
@@ -381,7 +379,7 @@ class DeepSignalNode<T extends object> {
 		keys.add(key);
 	}
 
-	removeParent(parent: DeepSignalNode<any>, key: PropertyKey): void {
+	removeParent(parent: DeepSignalNode<object>, key: PropertyKey): void {
 		const keys = this.parents.get(parent);
 		if (keys === undefined) {
 			return;
@@ -407,7 +405,7 @@ class DeepSignalNode<T extends object> {
 		this.propagateVersionChange(new Set());
 	}
 
-	private propagateVersionChange(seen: Set<DeepSignalNode<any>>): void {
+	private propagateVersionChange(seen: Set<DeepSignalNode<object>>): void {
 		if (seen.has(this)) {
 			return;
 		}
@@ -437,8 +435,9 @@ function getOrCreateNode<T extends object>(raw: T): DeepSignalNode<T> {
 	return node;
 }
 
-export const isDeepSignal = (source: unknown): source is DeepSignal<object> =>
-	isObject(source) && proxyToNode.has(source as object);
+export function isDeepSignal(source: unknown): source is DeepSignal<object> {
+	return isObject(source) && proxyToNode.has(source as object);
+}
 
 export function deepSignal<T extends object>(source: T): DeepSignal<T> {
 	if (isDeepSignal(source)) {
@@ -450,59 +449,32 @@ export function deepSignal<T extends object>(source: T): DeepSignal<T> {
 	return getOrCreateNode(source).proxy;
 }
 
-export const peek = <T extends DeepSignal<object>, K extends keyof T>(
-	source: T,
-	key: K,
-): T[K] => untracked(() => source[key]);
-
-export const trackDeepSignalVersion = (
-	source: DeepSignal<object>,
-): number => {
+export function trackDeepSignalVersion(source: DeepSignal<object>): number {
 	const node = proxyToNode.get(source as object);
 	if (node === undefined) {
 		throw new Error("trackDeepSignalVersion received a non-deep signal");
 	}
 	return node.getVersion().get();
-};
+}
 
-export const peekDeepSignalVersion = (
+export function trackDeepSignalShallowVersion(
 	source: DeepSignal<object>,
-): number => {
-	const node = proxyToNode.get(source as object);
-	if (node === undefined) {
-		throw new Error("peekDeepSignalVersion received a non-deep signal");
-	}
-	return node.getVersion().peek();
-};
-
-export const trackDeepSignalShallowVersion = (
-	source: DeepSignal<object>,
-): number => {
+): number {
 	const node = proxyToNode.get(source as object);
 	if (node === undefined) {
 		throw new Error("trackDeepSignalShallowVersion received a non-deep signal");
 	}
 	return node.getShallowVersion().get();
-};
-
-export const peekDeepSignalShallowVersion = (
-	source: DeepSignal<object>,
-): number => {
-	const node = proxyToNode.get(source as object);
-	if (node === undefined) {
-		throw new Error("peekDeepSignalShallowVersion received a non-deep signal");
-	}
-	return node.getShallowVersion().peek();
-};
+}
 
 type DeepSignalObject<T extends object> = {
 	[K in keyof T]: DeepSignal<T[K]>;
 };
 
-export type DeepSignal<T> = T extends (...args: any[]) => any
+export type DeepSignal<T> = T extends (...args: unknown[]) => unknown
 	? T
-	: T extends readonly any[]
-		? DeepSignalObject<T>
-		: T extends object
+	: T extends readonly unknown[]
 			? DeepSignalObject<T>
+			: T extends object
+				? DeepSignalObject<T>
 			: T;

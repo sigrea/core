@@ -4,10 +4,10 @@
  */
 
 import {
-	createReactiveSystem,
-	ReactiveFlags,
 	type Link,
+	ReactiveFlags,
 	type ReactiveNode,
+	createReactiveSystem,
 } from "alien-signals/system";
 
 import type { Computed } from "./computed";
@@ -16,26 +16,21 @@ import type { Signal } from "./signal";
 export { ReactiveFlags };
 export type { Link, ReactiveNode };
 
-export const enum SignalFlags {
+export enum SignalFlags {
 	IS_SIGNAL = "__v_isSignal",
 	SKIP = "__v_skip",
 }
 
-const {
-	link,
-	unlink,
-	propagate,
-	checkDirty,
-	shallowPropagate,
-} = createReactiveSystem({
-	update(node: ReactiveNode & { update(): boolean }) {
-		return node.update();
-	},
-	notify(effect: Effect) {
-		queue.push(effect);
-	},
-	unwatched() {},
-});
+const { link, unlink, propagate, checkDirty, shallowPropagate } =
+	createReactiveSystem({
+		update(node: ReactiveNode & { update(): boolean }) {
+			return node.update();
+		},
+		notify(effect: Effect) {
+			queue.push(effect);
+		},
+		unwatched() {},
+	});
 
 export { link, unlink, propagate, shallowPropagate };
 
@@ -107,7 +102,10 @@ export function batch<T>(fn: () => T): T {
 
 function flush(): void {
 	while (queue.length > 0) {
-		queue.shift()!.scheduler();
+		const effect = queue.shift();
+		if (effect !== undefined) {
+			effect.scheduler();
+		}
 	}
 }
 
@@ -121,7 +119,8 @@ export function shouldUpdate(node: ReactiveNode): boolean {
 		return true;
 	}
 	if (flags & ReactiveFlags.Pending) {
-		if (checkDirty(node.deps!, node)) {
+		const deps = node.deps;
+		if (deps !== undefined && checkDirty(deps, node)) {
 			return true;
 		}
 		node.flags = flags & ~ReactiveFlags.Pending;
@@ -129,7 +128,7 @@ export function shouldUpdate(node: ReactiveNode): boolean {
 	return false;
 }
 
-export class Effect<T = any> implements ReactiveNode {
+export class Effect<T = unknown> implements ReactiveNode {
 	deps: Link | undefined = undefined;
 	depsTail: Link | undefined = undefined;
 	flags: ReactiveFlags = ReactiveFlags.Watching;
@@ -196,10 +195,10 @@ export const toTypeString = (value: unknown): string =>
 
 export const isArray: typeof Array.isArray = Array.isArray;
 
-export const isMap = (val: unknown): val is Map<any, any> =>
+export const isMap = (val: unknown): val is Map<unknown, unknown> =>
 	toTypeString(val) === "[object Map]";
 
-export const isSet = (val: unknown): val is Set<any> =>
+export const isSet = (val: unknown): val is Set<unknown> =>
 	toTypeString(val) === "[object Set]";
 
 export const isDate = (val: unknown): val is Date =>
@@ -217,13 +216,21 @@ export const isString = (val: unknown): val is string =>
 export const isSymbol = (val: unknown): val is symbol =>
 	typeof val === "symbol";
 
-export const isObject = (val: unknown): val is Record<any, any> =>
+export const isObject = (val: unknown): val is Record<PropertyKey, unknown> =>
 	val !== null && typeof val === "object";
 
-export const isPromise = <T = any>(val: unknown): val is Promise<T> =>
-	(isObject(val) || isFunction(val)) &&
-	isFunction((val as any).then) &&
-	isFunction((val as any).catch);
+type PromiseCandidate = {
+	then?: unknown;
+	catch?: unknown;
+};
+
+export const isPromise = <T = unknown>(val: unknown): val is Promise<T> => {
+	if (!isObject(val) && !isFunction(val)) {
+		return false;
+	}
+	const candidate = val as PromiseCandidate;
+	return isFunction(candidate.then) && isFunction(candidate.catch);
+};
 
 export const isPlainObject = (val: unknown): val is object =>
 	toTypeString(val) === "[object Object]";
@@ -233,24 +240,20 @@ export const hasChanged = (value: unknown, oldValue: unknown): boolean =>
 
 export function NOOP(): void {}
 
-export function isSignal<T>(
-	source: Signal<T> | unknown,
-): source is Signal<T> {
+export function isSignal<T>(source: Signal<T> | unknown): source is Signal<T> {
 	return source
 		? (source as Record<string, unknown>)[SignalFlags.IS_SIGNAL] === true
 		: false;
 }
 
-export type MaybeSignal<T = any> = T | Signal<T>;
+export type MaybeSignal<T = unknown> = T | Signal<T>;
 
-export type MaybeSignalOrGetter<T = any> =
+export type MaybeSignalOrGetter<T = unknown> =
 	| MaybeSignal<T>
 	| Computed<T>
 	| (() => T);
 
-export function unSignal<T>(
-	source: MaybeSignal<T> | Computed<T>,
-): T {
+export function unSignal<T>(source: MaybeSignal<T> | Computed<T>): T {
 	return (isSignal(source) ? source.value : source) as T;
 }
 
