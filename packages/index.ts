@@ -51,6 +51,9 @@ export type {
 export { watchEffect } from "./core/watchEffect";
 export type { WatchEffect } from "./core/watchEffect";
 
+// nextTick
+export { nextTick } from "./core/nextTick";
+
 /**
  * ==================================================
  * lifecycle
