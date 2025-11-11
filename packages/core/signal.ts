@@ -10,6 +10,7 @@ import {
 	isBatching,
 	link,
 	propagate,
+	setDepFactory,
 	shallowPropagate,
 	shouldUpdate,
 } from "./reactivity";
@@ -80,3 +81,5 @@ export function signal<T>(value: T): Signal<T>;
 export function signal<T>(value?: T): Signal<T | undefined> {
 	return new SignalNode(value as T) as Signal<T | undefined>;
 }
+
+setDepFactory(() => new SignalNode(0));
