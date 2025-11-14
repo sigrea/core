@@ -1,8 +1,3 @@
-/**
- * Internal reactive primitives adapted from alien-deepsignals v0.2.7 (MIT).
- * Source: https://github.com/CCherry07/alien-deepsignals
- */
-
 import {
 	type Link,
 	ReactiveFlags,
@@ -266,14 +261,14 @@ export function resumeTracking(): void {
 	activeSub = pauseStack.pop();
 }
 
-export const untracked = <T>(fn: () => T): T => {
+export function untracked<T>(fn: () => T): T {
 	pauseTracking();
 	try {
 		return fn();
 	} finally {
 		resumeTracking();
 	}
-};
+}
 
 export function getCurrentCycle(): number {
 	return cycle;
@@ -405,48 +400,65 @@ export function effect<T>(fn: () => T): Effect<T> {
 	return instance;
 }
 
-export const objectToString: typeof Object.prototype.toString =
-	Object.prototype.toString;
+export function objectToString(this: unknown): string {
+	return Object.prototype.toString.call(this);
+}
 
-export const toTypeString = (value: unknown): string =>
-	objectToString.call(value);
+export function toTypeString(value: unknown): string {
+	return objectToString.call(value);
+}
 
-export const isArray: typeof Array.isArray = Array.isArray;
+export function isArray(value: unknown): value is unknown[] {
+	return Array.isArray(value);
+}
 
-export const isMap = (val: unknown): val is Map<unknown, unknown> =>
-	toTypeString(val) === "[object Map]";
+export function isMap(val: unknown): val is Map<unknown, unknown> {
+	return toTypeString(val) === "[object Map]";
+}
 
-export const isSet = (val: unknown): val is Set<unknown> =>
-	toTypeString(val) === "[object Set]";
+export function isSet(val: unknown): val is Set<unknown> {
+	return toTypeString(val) === "[object Set]";
+}
 
-export const isWeakMap = (val: unknown): val is WeakMap<object, unknown> =>
-	toTypeString(val) === "[object WeakMap]";
+export function isWeakMap(val: unknown): val is WeakMap<object, unknown> {
+	return toTypeString(val) === "[object WeakMap]";
+}
 
-export const isWeakSet = (val: unknown): val is WeakSet<object> =>
-	toTypeString(val) === "[object WeakSet]";
+export function isWeakSet(val: unknown): val is WeakSet<object> {
+	return toTypeString(val) === "[object WeakSet]";
+}
 
-export const isDate = (val: unknown): val is Date =>
-	toTypeString(val) === "[object Date]";
+export function isDate(val: unknown): val is Date {
+	return toTypeString(val) === "[object Date]";
+}
 
-export const isRegExp = (val: unknown): val is RegExp =>
-	toTypeString(val) === "[object RegExp]";
+export function isRegExp(val: unknown): val is RegExp {
+	return toTypeString(val) === "[object RegExp]";
+}
 
-export const isFunction = (
+export function isFunction(
 	val: unknown,
-): val is (...args: unknown[]) => unknown => typeof val === "function";
+): val is (...args: unknown[]) => unknown {
+	return typeof val === "function";
+}
 
-export const isString = (val: unknown): val is string =>
-	typeof val === "string";
+export function isString(val: unknown): val is string {
+	return typeof val === "string";
+}
 
-export const isSymbol = (val: unknown): val is symbol =>
-	typeof val === "symbol";
+export function isSymbol(val: unknown): val is symbol {
+	return typeof val === "symbol";
+}
 
-export const isIntegerKey = (key: unknown): key is string =>
-	typeof key === "string" &&
-	key !== "NaN" &&
-	key !== "Infinity" &&
-	String(Number(key)) === key &&
-	Number(key) >= 0;
+export function isIntegerKey(key: unknown): key is string {
+	return (
+		typeof key === "string" &&
+		key !== "NaN" &&
+		key !== "Infinity" &&
+		String(Number(key)) === key &&
+		Number(key) >= 0
+	);
+}
 
 const hasDataView = typeof DataView !== "undefined";
 
@@ -455,30 +467,34 @@ const isDataView = (val: unknown): val is DataView =>
 
 export type TypedArray = Exclude<ArrayBufferView, DataView>;
 
-export const isTypedArray = (val: unknown): val is TypedArray =>
-	ArrayBuffer.isView(val) && !isDataView(val);
+export function isTypedArray(val: unknown): val is TypedArray {
+	return ArrayBuffer.isView(val) && !isDataView(val);
+}
 
-export const isObject = (val: unknown): val is Record<PropertyKey, unknown> =>
-	val !== null && typeof val === "object";
+export function isObject(val: unknown): val is Record<PropertyKey, unknown> {
+	return val !== null && typeof val === "object";
+}
 
 type PromiseCandidate = {
 	then?: unknown;
 	catch?: unknown;
 };
 
-export const isPromise = <T = unknown>(val: unknown): val is Promise<T> => {
+export function isPromise<T = unknown>(val: unknown): val is Promise<T> {
 	if (!isObject(val) && !isFunction(val)) {
 		return false;
 	}
 	const candidate = val as PromiseCandidate;
 	return isFunction(candidate.then) && isFunction(candidate.catch);
-};
+}
 
-export const isPlainObject = (val: unknown): val is object =>
-	toTypeString(val) === "[object Object]";
+export function isPlainObject(val: unknown): val is object {
+	return toTypeString(val) === "[object Object]";
+}
 
-export const hasChanged = (value: unknown, oldValue: unknown): boolean =>
-	!Object.is(value, oldValue);
+export function hasChanged(value: unknown, oldValue: unknown): boolean {
+	return !Object.is(value, oldValue);
+}
 
 export function NOOP(): void {}
 
