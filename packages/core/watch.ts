@@ -11,10 +11,19 @@ import {
 	isPlainObject,
 	isSet,
 	isSignal,
+	untracked,
 } from "./reactivity";
 
+export type { DebuggerHook } from "./reactivity";
+
 import type { Computed } from "./computed";
-import { type DeepSignal, isDeepSignal } from "./deepSignal";
+import {
+	type DeepSignal,
+	type ReadonlyDeepSignal,
+	isDeepSignal,
+	trackDeepSignalVersion,
+} from "./deepSignal";
+import { schedulePostFlush, schedulePreFlush } from "./scheduler";
 import { getCurrentScope, registerScopeCleanup } from "./scope";
 import type { Signal } from "./signal";
 
@@ -28,15 +37,6 @@ interface AsyncQueueEntry {
 }
 
 type QueueJobFn = (job: SchedulerJob, immediateFirstRun?: boolean) => void;
-
-const resolvedPromise = Promise.resolve();
-
-const scheduleMicrotask: (cb: () => void) => void =
-	typeof queueMicrotask === "function"
-		? queueMicrotask
-		: (cb: () => void) => {
-				resolvedPromise.then(cb);
-			};
 
 function createAsyncQueue(
 	scheduleFlush: (flush: () => void) => void,
@@ -82,17 +82,16 @@ function createAsyncQueue(
 }
 
 const queuePreFlushJob = createAsyncQueue((flush) => {
-	scheduleMicrotask(flush);
+	schedulePreFlush(flush);
 });
 
 const queuePostFlushJob = createAsyncQueue((flush) => {
-	setTimeout(flush, 0);
+	schedulePostFlush(flush);
 });
 
 export interface WatchOptions<Immediate = boolean> {
 	immediate?: Immediate;
 	deep?: boolean | number;
-	once?: boolean;
 	flush?: WatchFlushType;
 	onTrack?: DebuggerHook;
 	onTrigger?: DebuggerHook;
@@ -108,13 +107,35 @@ type SingleWatchSource<T> =
 	| Signal<T>
 	| Computed<T>
 	| (() => T)
-	| (T extends object ? DeepSignal<T> : never);
+	| (T extends object ? DeepSignal<T> | ReadonlyDeepSignal<T> : never);
 
-export type WatchSource<T> = SingleWatchSource<T>;
+export type WatchSource<T = unknown> = SingleWatchSource<T>;
 
 type WatchSourceList<T extends readonly unknown[]> = {
-	[K in keyof T]: SingleWatchSource<T[K]>;
+	[K in keyof T]: WatchSource<T[K]>;
 };
+
+type AnyWatchSource =
+	| WatchSource<unknown>
+	| DeepSignal<object>
+	| ReadonlyDeepSignal<object>;
+
+type UnwrapWatchSource<S> = S extends Signal<infer V>
+	? V
+	: S extends Computed<infer V>
+		? V
+		: S extends () => infer V
+			? V
+			: S extends DeepSignal<infer V>
+				? V
+				: S;
+
+type WatchSourceValues<Sources extends readonly AnyWatchSource[]> = {
+	[K in keyof Sources]: UnwrapWatchSource<Sources[K]>;
+};
+
+// biome-ignore lint/suspicious/noExplicitAny: implementation signature must accept any callback shape
+type AnyWatchCallback = WatchCallback<any, any>;
 
 export type WatchCallback<V = unknown, OV = unknown> = (
 	value: V,
@@ -127,8 +148,7 @@ const INITIAL_WATCHER_VALUE: unknown = {};
 class Watcher {
 	private readonly effect: Effect<unknown>;
 	private readonly getter: () => unknown;
-	private readonly callback?: WatchCallback;
-	private readonly once: boolean;
+	private readonly callback?: AnyWatchCallback;
 	private readonly deepOption: WatchOptions["deep"];
 	private readonly deepEnabled: boolean;
 	private readonly isMultiSource: boolean;
@@ -142,11 +162,10 @@ class Watcher {
 
 	constructor(
 		source: unknown,
-		callback: WatchCallback | undefined,
+		callback: AnyWatchCallback | undefined,
 		options: WatchOptions,
 	) {
 		this.callback = callback;
-		this.once = options.once === true;
 		this.deepOption = this.resolveDeepOption(source, options.deep);
 		this.deepEnabled = callback !== undefined && this.deepOption !== undefined;
 
@@ -165,7 +184,7 @@ class Watcher {
 		this.effect = new Effect(() => this.getter());
 		this.effect.onTrack = options.onTrack;
 		this.effect.onTrigger = options.onTrigger;
-		const flushMode: WatchFlushType = options.flush ?? "sync";
+		const flushMode: WatchFlushType = options.flush ?? "pre";
 		const job = (immediateFirstRun?: boolean) => {
 			this.schedule(immediateFirstRun);
 		};
@@ -245,19 +264,13 @@ class Watcher {
 				const formattedOldValue = this.normalizeOldValue();
 				this.runCleanup();
 				this.callback(newValue, formattedOldValue, this.registerCleanup);
-				this.oldValue = newValue;
-				if (this.once) {
-					this.stop();
-				}
+				this.refreshOldValue(newValue);
 			}
 			return;
 		}
 
 		this.runCleanup();
 		this.effect.run();
-		if (this.once) {
-			this.stop();
-		}
 	}
 
 	private createGetter(
@@ -339,6 +352,10 @@ class Watcher {
 			return getter;
 		}
 
+		if (this.shouldUseDeepSignalVersionTracking()) {
+			return getter;
+		}
+
 		const depth = this.resolveTraverseDepth();
 
 		return () => this.traverse(getter(), depth);
@@ -351,6 +368,9 @@ class Watcher {
 		if (isDeepSignal(entry)) {
 			const deepEntry = entry as DeepSignal<object>;
 			this.hasDeepSignalArrayEntry = true;
+			if (this.shouldUseDeepSignalVersionTracking()) {
+				return this.readDeepSignalSource(deepEntry);
+			}
 			if (this.deepOption !== undefined) {
 				return this.traverseDeepSignalEntry(deepEntry);
 			}
@@ -368,6 +388,11 @@ class Watcher {
 	}
 
 	private readDeepSignalSource(source: DeepSignal<object>): object {
+		if (this.shouldUseDeepSignalVersionTracking()) {
+			const shallowOnly = this.deepOption === false;
+			trackDeepSignalVersion(source, shallowOnly);
+			return source as object;
+		}
 		if (this.shouldShallowTraverseDeepSignal()) {
 			return this.traverse(source, 1) as object;
 		}
@@ -384,6 +409,19 @@ class Watcher {
 
 	private shouldShallowTraverseDeepSignal(): boolean {
 		return this.deepOption === undefined;
+	}
+
+	private shouldUseDeepSignalVersionTracking(): boolean {
+		if (typeof this.deepOption === "number") {
+			return false;
+		}
+		if (this.isDeepSignalSource) {
+			return true;
+		}
+		if (this.isMultiSource && this.hasDeepSignalArrayEntry) {
+			return true;
+		}
+		return false;
 	}
 
 	private computeFallbackChanged(newValue: unknown): boolean {
@@ -529,8 +567,24 @@ class Watcher {
 
 		return value;
 	}
+
+	private refreshOldValue(newValue: unknown): void {
+		if (this.callback === undefined) {
+			this.oldValue = newValue;
+			return;
+		}
+		this.oldValue = untracked(() => this.getter());
+	}
 }
 
+export function watch<Sources extends readonly AnyWatchSource[]>(
+	source: readonly [...Sources],
+	callback?: WatchCallback<
+		WatchSourceValues<Sources>,
+		WatchSourceValues<Sources>
+	>,
+	options?: WatchOptions,
+): WatchStopHandle;
 export function watch<T extends readonly unknown[]>(
 	source: WatchSourceList<T>,
 	callback?: WatchCallback<T, T>,
@@ -548,18 +602,22 @@ export function watch(
 ): WatchStopHandle;
 export function watch(
 	source: unknown,
-	callback?: WatchCallback,
-	options: WatchOptions = {},
+	callback?: AnyWatchCallback,
+	options?: WatchOptions,
 ): WatchStopHandle {
-	const watcher = new Watcher(source, callback, options);
+	const normalizedOptions: WatchOptions = options ?? {};
+	const watcher = new Watcher(source, callback, normalizedOptions);
 
 	const scope = getCurrentScope();
-	const detach = registerScopeCleanup(() => {
-		watcher.stop();
-	}, scope);
+	let detach: (() => void) | undefined;
+	if (scope !== undefined) {
+		detach = registerScopeCleanup(() => {
+			watcher.stop();
+		}, scope);
+	}
 	watcher.setScopeDetacher(detach);
 
-	watcher.initialize(options.immediate);
+	watcher.initialize(normalizedOptions.immediate);
 
 	return () => {
 		watcher.stop();

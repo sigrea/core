@@ -1,8 +1,22 @@
 import { watch } from "./watch";
-import type { WatchEffect, WatchStopHandle } from "./watch";
+import type {
+	DebuggerHook,
+	WatchEffect,
+	WatchFlushType,
+	WatchStopHandle,
+} from "./watch";
 
 export type { WatchEffect };
 
-export function watchEffect(effect: WatchEffect): WatchStopHandle {
-	return watch(effect);
+export interface WatchEffectOptions {
+	flush?: WatchFlushType;
+	onTrack?: DebuggerHook;
+	onTrigger?: DebuggerHook;
+}
+
+export function watchEffect(
+	effect: WatchEffect,
+	options?: WatchEffectOptions,
+): WatchStopHandle {
+	return watch(effect, undefined, options);
 }

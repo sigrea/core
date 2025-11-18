@@ -42,6 +42,10 @@ export class SignalNode<T = unknown> implements ReactiveNode {
 	}
 
 	set(value: T): void {
+		if (!hasChanged(value, this.pendingValue)) {
+			this.pendingValue = value;
+			return;
+		}
 		this.pendingValue = value;
 		this.flags = ReactiveFlags.Mutable | ReactiveFlags.Dirty;
 		const subs = this.subs;
