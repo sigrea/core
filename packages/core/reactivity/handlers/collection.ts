@@ -6,6 +6,7 @@ import {
 	hasChanged,
 	isMap,
 	isSet,
+	isSignal,
 	track,
 	trigger,
 } from "../../reactivity";
@@ -64,19 +65,24 @@ export function createCollectionHandlers(
 }
 
 function createInstrumentations(hooks: HandlerHooks): Instrumentations {
-	const { wrap, unwrap, markVersionChanged, rawSymbol, isReadonly } = hooks;
-	const readonly = isReadonly === true;
+	const {
+		wrap,
+		unwrap,
+		markVersionChanged,
+		rawSymbol,
+		registerParent,
+		unregisterParent,
+	} = hooks;
+	const readonly = hooks.isReadonly === true;
 
 	const instrumentations: Instrumentations = {
 		get(this: MapTypes, key: unknown) {
 			const target = getRawTarget<MapTypes>(this, rawSymbol);
 			const rawKey = unwrap(key);
-			if (!readonly) {
-				if (!Object.is(key, rawKey)) {
-					track(target, TrackOpType.GET, key);
-				}
-				track(target, TrackOpType.GET, rawKey);
+			if (!Object.is(key, rawKey)) {
+				track(target, TrackOpType.GET, key);
 			}
+			track(target, TrackOpType.GET, rawKey);
 			const resolvedKey = resolveTargetKey(target, key, rawKey);
 			return wrap(target.get(resolvedKey as never));
 		},
@@ -84,12 +90,10 @@ function createInstrumentations(hooks: HandlerHooks): Instrumentations {
 		has(this: CollectionTypes, key: unknown): boolean {
 			const target = getRawTarget<CollectionTypes>(this, rawSymbol);
 			const rawKey = unwrap(key);
-			if (!readonly) {
-				if (!Object.is(key, rawKey)) {
-					track(target, TrackOpType.HAS, key);
-				}
-				track(target, TrackOpType.HAS, rawKey);
+			if (!Object.is(key, rawKey)) {
+				track(target, TrackOpType.HAS, key);
 			}
+			track(target, TrackOpType.HAS, rawKey);
 			return target.has(key as never) || target.has(rawKey as never);
 		},
 
@@ -108,6 +112,7 @@ function createInstrumentations(hooks: HandlerHooks): Instrumentations {
 			}
 			if (!hadKey) {
 				target.add(resolvedValue as never);
+				registerParent(target, resolvedValue);
 				trigger(target, TriggerOpType.ADD, resolvedValue, resolvedValue);
 				markVersionChanged(target);
 			}
@@ -129,11 +134,19 @@ function createInstrumentations(hooks: HandlerHooks): Instrumentations {
 				hadKey = target.has(resolvedKey as never);
 			}
 			const oldValue = hadKey ? target.get(resolvedKey as never) : undefined;
+			if (hadKey && isSignal(oldValue) && !isSignal(rawValue)) {
+				(oldValue as { value: unknown }).value = rawValue;
+				return this;
+			}
 			target.set(resolvedKey as never, rawValue);
 			if (!hadKey) {
+				registerParent(target, resolvedKey);
+				registerParent(target, rawValue);
 				trigger(target, TriggerOpType.ADD, resolvedKey, rawValue);
 				markVersionChanged(target);
 			} else if (hasChanged(rawValue, oldValue)) {
+				unregisterParent(target, oldValue);
+				registerParent(target, rawValue);
 				trigger(target, TriggerOpType.SET, resolvedKey, rawValue);
 				markVersionChanged(target);
 			}
@@ -153,8 +166,17 @@ function createInstrumentations(hooks: HandlerHooks): Instrumentations {
 				resolvedKey = rawKey;
 				hadKey = target.has(resolvedKey as never);
 			}
+			const isMapTarget = isMap(target);
+			const oldValue =
+				hadKey && isMapTarget
+					? (target as Map<unknown, unknown>).get(resolvedKey as never)
+					: undefined;
 			const result = target.delete(resolvedKey as never);
 			if (hadKey && result) {
+				unregisterParent(target, resolvedKey);
+				if (isMapTarget) {
+					unregisterParent(target, oldValue);
+				}
 				trigger(target, TriggerOpType.DELETE, resolvedKey);
 				markVersionChanged(target);
 			}
@@ -168,6 +190,18 @@ function createInstrumentations(hooks: HandlerHooks): Instrumentations {
 			}
 			const target = getRawTarget<IterableCollections>(this, rawSymbol);
 			const hadItems = target.size !== 0;
+			if (hadItems) {
+				if (isMap(target)) {
+					for (const [key, value] of target.entries()) {
+						unregisterParent(target, key);
+						unregisterParent(target, value);
+					}
+				} else {
+					for (const value of target.values()) {
+						unregisterParent(target, value);
+					}
+				}
+			}
 			const result = target.clear();
 			if (hadItems) {
 				trigger(target, TriggerOpType.CLEAR);
@@ -189,9 +223,7 @@ function createInstrumentations(hooks: HandlerHooks): Instrumentations {
 			if (typeof target.forEach !== "function") {
 				return undefined;
 			}
-			if (!readonly) {
-				track(target, TrackOpType.ITERATE, ITERATE_KEY);
-			}
+			track(target, TrackOpType.ITERATE, ITERATE_KEY);
 			return target.forEach((value: unknown, key: unknown) => {
 				callback.call(thisArg, wrap(value), wrap(key), this);
 			});
@@ -201,7 +233,7 @@ function createInstrumentations(hooks: HandlerHooks): Instrumentations {
 	Object.defineProperty(instrumentations, "size", {
 		get(this: IterableCollections) {
 			const target = getRawTarget<IterableCollections>(this, rawSymbol);
-			if (!readonly && (isMap(target) || isSet(target))) {
+			if (isMap(target) || isSet(target)) {
 				track(target, TrackOpType.ITERATE, ITERATE_KEY);
 			}
 			return Reflect.get(target, "size", target);
@@ -223,29 +255,26 @@ function createIterableMethod(
 	method: "keys" | "values" | "entries" | typeof Symbol.iterator,
 	hooks: HandlerHooks,
 ): (...args: unknown[]) => IteratorResultLike<unknown> | undefined {
-	const { wrap, rawSymbol, isReadonly } = hooks;
-	const readonly = isReadonly === true;
+	const { wrap, rawSymbol } = hooks;
 
 	return function (this: IterableCollections, ...args: unknown[]) {
 		const target = getRawTarget<IterableCollections>(this, rawSymbol);
-		const targetMethod = (target as Record<PropertyKey, unknown>)[method];
+		const targetMethod = Reflect.get(target as object, method, target) as
+			| ((...methodArgs: unknown[]) => Iterator<unknown>)
+			| undefined;
 		if (typeof targetMethod !== "function") {
-			return targetMethod;
+			return undefined;
 		}
 		const isMapTarget = isMap(target);
-		const innerIterator = (
-			targetMethod as (...methodArgs: unknown[]) => Iterator<unknown>
-		).apply(target, args);
+		const innerIterator = targetMethod.apply(target, args);
 		const isPair =
 			method === "entries" || (method === Symbol.iterator && isMapTarget);
 		const isKeyOnly = method === "keys" && isMapTarget;
-		if (!readonly) {
-			track(
-				target,
-				TrackOpType.ITERATE,
-				isKeyOnly ? MAP_KEY_ITERATE_KEY : ITERATE_KEY,
-			);
-		}
+		track(
+			target,
+			TrackOpType.ITERATE,
+			isKeyOnly ? MAP_KEY_ITERATE_KEY : ITERATE_KEY,
+		);
 		return createWrappingIterator(innerIterator, wrap, isPair);
 	};
 }

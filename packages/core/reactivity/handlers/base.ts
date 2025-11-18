@@ -1,6 +1,7 @@
 import {
 	TrackOpType,
 	TriggerOpType,
+	isSignal,
 	pauseTracking,
 	resumeTracking,
 	track,
@@ -42,6 +43,7 @@ export function createBaseHandlers(hooks: HandlerHooks): ProxyHandler<object> {
 
 			track(target, TrackOpType.GET, key);
 			const value = Reflect.get(target, key, receiver);
+			hooks.registerParent(target, value);
 			return hooks.wrap(value, key);
 		},
 
@@ -52,8 +54,8 @@ export function createBaseHandlers(hooks: HandlerHooks): ProxyHandler<object> {
 			}
 
 			const descriptor = Reflect.getOwnPropertyDescriptor(target, key);
-			const setter = descriptor?.set;
-			if (setter !== undefined) {
+			if (descriptor !== undefined && descriptor.set !== undefined) {
+				const setter = descriptor.set;
 				const getter = descriptor.get as
 					| ((this: unknown) => unknown)
 					| undefined;
@@ -76,6 +78,8 @@ export function createBaseHandlers(hooks: HandlerHooks): ProxyHandler<object> {
 				setter.call(receiver, rawValue);
 
 				const nextValue = readWithPausedTracking(readGetter);
+				hooks.unregisterParent(target, previousValue);
+				hooks.registerParent(target, nextValue);
 				const shouldNotify =
 					getter === undefined || !Object.is(previousValue, nextValue);
 				if (shouldNotify) {
@@ -90,10 +94,18 @@ export function createBaseHandlers(hooks: HandlerHooks): ProxyHandler<object> {
 			const currentValue = hadKey
 				? (target as Record<PropertyKey, unknown>)[key]
 				: undefined;
+			if (hadKey) {
+				hooks.unregisterParent(target, currentValue);
+			}
+			if (hadKey && isSignal(currentValue) && !isSignal(rawValue)) {
+				(currentValue as { value: unknown }).value = rawValue;
+				return true;
+			}
 			const result = Reflect.set(target, key, rawValue);
 			if (!result) {
 				return false;
 			}
+			hooks.registerParent(target, rawValue);
 
 			const shouldNotify = !hadKey || !Object.is(currentValue, rawValue);
 			if (!hadKey) {
@@ -116,11 +128,15 @@ export function createBaseHandlers(hooks: HandlerHooks): ProxyHandler<object> {
 			}
 
 			const hadKey = hasOwn(target, key);
+			const currentValue = hadKey
+				? (target as Record<PropertyKey, unknown>)[key]
+				: undefined;
 			const result = Reflect.deleteProperty(target, key);
 			if (!result) {
 				return false;
 			}
 			if (hadKey) {
+				hooks.unregisterParent(target, currentValue);
 				trigger(target, TriggerOpType.DELETE, key);
 				hooks.markVersionChanged(target);
 			}
@@ -158,6 +174,9 @@ export function createBaseHandlers(hooks: HandlerHooks): ProxyHandler<object> {
 			if (!result) {
 				return false;
 			}
+			if (hadKey) {
+				hooks.unregisterParent(target, currentValue);
+			}
 
 			const hasValue = "value" in nextDescriptor;
 			const valueChanged =
@@ -170,6 +189,9 @@ export function createBaseHandlers(hooks: HandlerHooks): ProxyHandler<object> {
 
 			if (!hadKey || valueChanged) {
 				hooks.markVersionChanged(target);
+			}
+			if (hasValue) {
+				hooks.registerParent(target, nextDescriptor.value);
 			}
 
 			return true;
