@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.2.4
+
+[compare changes](https://github.com/sigrea/core/compare/v0.2.3...v0.2.4)
+
+### 🏡 Chore
+
+- **ci:** Drop github packages publishing ([85a2f96](https://github.com/sigrea/core/commit/85a2f96))
+
+### ❤️ Contributors
+
+- Aose-yuu <aose.developer@gmail.com>
+
 ## v0.2.3
 
 [compare changes](https://github.com/sigrea/core/compare/v0.2.2...v0.2.3)
