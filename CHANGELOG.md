@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.2.1
+
+[compare changes](https://github.com/sigrea/core/compare/v0.2.0...v0.2.1)
+
+### 🩹 Fixes
+
+- Set always-auth for github packages scope ([c428fc4](https://github.com/sigrea/core/commit/c428fc4))
+
+### ❤️ Contributors
+
+- Aose-yuu <aose.developer@gmail.com>
+
 ## v0.2.0
 
 
