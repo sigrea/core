@@ -1,7 +1,7 @@
-# @sigrea/core
+# Changelog
 
-## 0.1.0
+## v0.1.0
 
-### Minor Changes
+### 🚀 Enhancements
 
 - Initial release providing the core reactive primitives and logic utilities.

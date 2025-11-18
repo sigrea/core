@@ -1,13 +1,16 @@
 name: publish
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 permissions:
   contents: write
   id-token: write
   packages: write
 jobs:
   publish:
-    if: github.ref == 'refs/heads/main'
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: release
     concurrency: publish-${{ github.ref }}
@@ -54,10 +57,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$TAG" -m "$TAG"
           git push origin "$TAG"
-      - name: Create GitHub Release (auto notes)
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.ver.outputs.version }}
-          generate_release_notes: true
+      - name: Sync GitHub Release notes via changelogen
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm dlx changelogen gh release v${{ steps.ver.outputs.version }} --token "${GITHUB_TOKEN}"

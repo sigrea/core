@@ -12,7 +12,7 @@
 		"enabled": true
 	},
 	"files": {
-		"include": ["packages/**"],
+		"include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.json"],
 		"ignore": ["packages/**/dist/**", "packages/**/coverage/**"]
 	}
 }

@@ -10,7 +10,7 @@
 		"resolveJsonModule": true,
 		"skipLibCheck": true,
 		"outDir": "dist",
-		"types": []
+		"types": ["node"]
 	},
 	"include": ["index.ts", "packages/**/*.ts"],
 	"exclude": ["dist", "node_modules"]
