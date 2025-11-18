@@ -46,11 +46,11 @@
 		"test:coverage": "vitest --coverage",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"format": "biome check .",
-		"format:fix": "biome check --write ."
+		"format:fix": "biome check --write .",
+		"cicheck": "pnpm test && pnpm typecheck && pnpm format:fix"
 	},
 	"dependencies": {
-		"alien-signals": "^3.0.1",
-		"alien-deepsignals": "^0.2.7"
+		"alien-signals": "^3.0.1"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.9.4",

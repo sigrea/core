@@ -1,0 +1,133 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Development Commands
+
+**Install dependencies:**
+```bash
+pnpm install
+```
+
+**Build:**
+```bash
+pnpm build           # Production build via unbuild
+pnpm typecheck       # TypeScript type checking only
+```
+
+**Test:**
+```bash
+pnpm test            # Run Vitest once (no watch)
+pnpm test:coverage   # Collect V8 coverage
+```
+
+**Format:**
+```bash
+pnpm format          # Check Biome formatting (no writes)
+pnpm format:fix      # Apply Biome auto-fixes
+```
+
+**CI simulation:**
+```bash
+pnpm cicheck         # Run tests + typecheck + format (identical to CI)
+```
+
+**Run a single test:**
+```bash
+pnpm test packages/core/__tests__/signal.test.ts
+```
+
+## Architecture Overview
+
+Sigrea builds on alien-signals to provide Vue-style deep reactivity in a framework-agnostic manner.
+
+### Package Structure
+
+```
+packages/
+  core/                # Core primitives: signal, computed, watch, scope
+    reactivity/        # track/trigger infrastructure and proxy handlers
+      handlers/        # base, array, collection, readonly, shallow, mutable
+    __tests__/
+  lifecycle/           # onMount, onUnmount hooks
+  logic/               # defineLogic, mountLogic, cleanupLogics
+  __tests__/           # Cross-package tests
+  index.ts             # Single entry point
+```
+
+### How the Reactivity Layers Work
+
+1. **alien-signals integration** (`packages/core/reactivity.ts`)
+   - Obtains `link`, `unlink`, `propagate` via `createReactiveSystem()`
+   - `Effect` class implements `ReactiveNode`, while `track()` and `trigger()` manage `targetMap: WeakMap<object, Map<key, Dep>>`
+   - `Dep` is `SignalNode<number>` type representing dependencies on each property
+   - `batch()` and `flush()` provide queue-driven scheduling
+
+2. **Proxy handlers** (`packages/core/reactivity/handlers/`)
+   - `base.ts`: Base handler containing common `track()`/`trigger()` logic
+   - `array.ts`: Intercepts array operations (push, pop, length, etc.) and adds INTEGER_KEY and length tracking
+   - `collection.ts`: Intercepts Map, Set, WeakMap, WeakSet using dedicated `ITERATE_KEY`/`MAP_KEY_ITERATE_KEY`
+   - `readonly.ts`, `shallow.ts`, `mutable.ts`: Customize readonly, shallow, and mutable behaviors respectively
+   - Each handler is applied through `createReactiveObject(target, proxyMap, handlers)`
+
+3. **deepSignal** (`packages/core/deepSignal.ts`)
+   - Recursively wraps objects, Arrays, Map, Set, and typed arrays with proxies
+   - Automatically unwraps signals stored inside (Vue ref style)
+   - Provides `shallowDeepSignal()`, `readonlyDeepSignal()`, `readonlyShallowDeepSignal()` variants
+
+4. **watch & watchEffect** (`packages/core/watch.ts`, `packages/core/watchEffect.ts`)
+   - `watch(source, callback, options)`: Supports signal/getter/array sources, receives oldValue/newValue/onCleanup
+   - `watchEffect(fn, options)`: Auto-tracking effect that automatically subscribes to accessed signals
+   - Flush modes: Recognizes `"pre"`, `"post"`, `"sync"` and integrates with scheduler
+   - Depth limit options (adjust granularity for detecting deep proxy changes)
+
+5. **Scope lifecycle** (`packages/core/scope.ts`)
+   - `Scope` class manages tree structure of cleanup callbacks
+   - `createScope()`, `runWithScope()`, `disposeScope()` control effect and watcher lifecycles
+   - `registerScopeCleanup(fn)` for automatic cleanup registration
+
+6. **Logic factories** (`packages/logic/defineLogic.ts`)
+   - `defineLogic<TProps>()((props, context) => { ... })` pattern
+   - Each logic instance owns its own Scope; during setup execution, `context.get(ChildLogic, props)` retrieves and links child logic
+   - `mountLogic()` for manual mounting, `cleanupLogic()` / `cleanupLogics()` for post-test cleanup
+
+### Design Principles
+
+- **Delegation to alien-signals**: Low-level scheduling and dependency tracking are delegated to alien-signals; Sigrea focuses on proxy handlers, scope management, and logic factories
+- **Handler integration**: Integrates track/trigger calls into proxy handlers; deepSignal detects nested object and collection changes with fine granularity
+- **Vue-style lifecycle**: `onMount`/`onUnmount` are implemented based on Scope, independent of host renderer
+- **Single entry point**: `packages/index.ts` consolidates all exports, generating dual CJS/ESM bundles
+
+## Coding Conventions
+
+- **ES modules**: All `.ts` files with 2-space indentation, Biome applied
+- **Naming**: Runtime uses camelCase, types/classes use PascalCase, factory functions use `defineXxx` prefix
+- **Lifecycle utilities**: Unify with `onMount`, `onUnmount` naming for searchability
+- **Test placement**: Cross-package in `packages/__tests__/*.test.ts`, unit tests adjacent to modules as `*.spec.ts`
+- **Cleanup**: Always set `afterEach(() => cleanupLogics())` in tests
+
+## Testing Guidelines
+
+- Use `mountLogic(LogicFactory, props)` to reproduce actual lifecycles
+- Call `cleanupLogics()` in `afterEach()` to reset hidden subscriptions
+- Add happy path + failure path for each feature
+- Verify coverage with `pnpm test:coverage`
+
+## Commit Conventions
+
+- **Conventional Commits**: `<type>: <summary>` format (e.g., `feat: add scope watcher`, `fix(deepSignal): unwrap nested signals`)
+- **Changesets**: Add changeset with `pnpm changeset` for user-facing changes
+  - Not required for: docs, chore, refactor-only, test-only
+
+## Changesets & Release Flow
+
+- After merge to main, Changesets action automatically creates/updates "Version Packages" PR
+- Maintainers merge Version PR when ready to release, then manually execute `publish` workflow (workflow dispatch)
+- `publish` runs build → test → npm publish (with --provenance) → tag `vX.Y.Z` → auto-generate GitHub Release
+
+## Important Notes
+
+- **Role of alien-signals**: Primitives like `SignalNode<T>`, `ReactiveNode`, `createReactiveSystem()` are provided by alien-signals
+- **Proxy caching**: `deepSignal()` caches proxies in WeakMap to return the same proxy for the same object
+- **ITERATE_KEY / MAP_KEY_ITERATE_KEY**: Internal Symbols for iteration tracking, used to detect for-loops over arrays/Map/Set
+- **Scheduler integration**: track/trigger integrate with alien-signals' link/unlink, and Sigrea's flush() processes the effect queue
