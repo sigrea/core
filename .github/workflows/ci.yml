@@ -55,9 +55,11 @@ jobs:
           echo "$PACK_OUTPUT"
           TARBALL=$(printf '%s\n' "$PACK_OUTPUT" | tail -n 1 | tr -d '[:space:]')
           echo "Packed tarball: $TARBALL"
-          echo "Listing contents:" && tar -tf "$TARBALL" | sed -n '1,200p'
+          TAR_LIST=$(mktemp)
+          tar -tf "$TARBALL" > "$TAR_LIST"
+          echo "Listing contents:" && sed -n '1,200p' "$TAR_LIST"
           # verify essential build outputs exist in the tarball
-          tar -tf "$TARBALL" | grep -q '^package/dist/index.mjs$'
-          tar -tf "$TARBALL" | grep -q '^package/dist/index.cjs$'
-          tar -tf "$TARBALL" | grep -q '^package/dist/index.d.ts$'
-          rm -f "$TARBALL"
+          grep -q '^package/dist/index.mjs$' "$TAR_LIST"
+          grep -q '^package/dist/index.cjs$' "$TAR_LIST"
+          grep -q '^package/dist/index.d.ts$' "$TAR_LIST"
+          rm -f "$TARBALL" "$TAR_LIST"

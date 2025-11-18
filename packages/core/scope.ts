@@ -3,7 +3,7 @@ export type Cleanup = () => void;
 export type ScopeCleanupPhase = "dispose" | "immediate";
 
 export interface ScopeCleanupErrorContext {
-	scope: Scope;
+	scope?: Scope;
 	scopeId: number;
 	cleanup: Cleanup;
 	index: number;
@@ -31,30 +31,19 @@ export function setScopeCleanupErrorHandler(
 
 let nextScopeId = 1;
 
-function collectErrors(target: unknown, errors: unknown[]): void {
-	if (target instanceof AggregateError) {
-		for (const error of target.errors) {
-			errors.push(error);
-		}
-		return;
-	}
-	errors.push(target);
-}
-
-function handleCleanupError(
-	scope: Scope,
+function resolveCleanupErrorResponse(
+	scope: Scope | undefined,
 	cleanup: Cleanup,
 	index: number,
 	total: number,
 	phase: ScopeCleanupPhase,
 	error: unknown,
-	errors: unknown[],
-): void {
+): ScopeCleanupErrorResponse | undefined {
 	if (cleanupErrorHandler !== undefined) {
 		try {
 			const response = cleanupErrorHandler(error, {
 				scope,
-				scopeId: scope.id,
+				scopeId: scope?.id ?? -1,
 				cleanup,
 				index,
 				total,
@@ -62,45 +51,79 @@ function handleCleanupError(
 			});
 
 			if (response === ScopeCleanupErrorResponse.Suppress) {
-				return;
+				return ScopeCleanupErrorResponse.Suppress;
+			}
+
+			if (response === ScopeCleanupErrorResponse.Propagate) {
+				return ScopeCleanupErrorResponse.Propagate;
 			}
 		} catch (handlerError) {
-			collectErrors(handlerError, errors);
+			if (process.env.NODE_ENV !== "production") {
+				console.error(
+					"Scope cleanup error handler threw an error.",
+					handlerError,
+				);
+			}
+			return undefined;
 		}
 	}
 
-	collectErrors(error, errors);
+	if (process.env.NODE_ENV !== "production") {
+		const phaseLabel =
+			phase === "dispose"
+				? "Scope cleanup failed"
+				: "Immediate scope cleanup failed";
+		const scopeLabel = scope !== undefined ? ` (scope #${scope.id})` : "";
+		console.error(`${phaseLabel}${scopeLabel}.`, error);
+	}
+	return undefined;
 }
 
 function runCleanupWithHandling(
-	scope: Scope,
+	scope: Scope | undefined,
 	cleanup: Cleanup,
 	index: number,
 	total: number,
 	phase: ScopeCleanupPhase,
-	errors: unknown[],
+	errors?: unknown[],
 ): void {
 	try {
 		cleanup();
 	} catch (error) {
-		handleCleanupError(scope, cleanup, index, total, phase, error, errors);
+		const response = resolveCleanupErrorResponse(
+			scope,
+			cleanup,
+			index,
+			total,
+			phase,
+			error,
+		);
+		if (response === ScopeCleanupErrorResponse.Propagate) {
+			throw error;
+		}
+		if (
+			response !== ScopeCleanupErrorResponse.Suppress &&
+			errors !== undefined
+		) {
+			errors.push(error);
+		}
 	}
 }
 
-function throwIfErrors(
+function throwAggregateCleanupError(
 	errors: unknown[],
-	scope: Scope,
+	scope: Scope | undefined,
 	phase: ScopeCleanupPhase,
 ): void {
 	if (errors.length === 0) {
 		return;
 	}
-
+	const scopeLabel = scope !== undefined ? ` (scope #${scope.id})` : "";
 	const phaseLabel =
 		phase === "dispose"
-			? "Scope cleanup failed"
-			: "Immediate scope cleanup failed";
-	throw new AggregateError(errors, `${phaseLabel} (scope #${scope.id}).`);
+			? "Failed to dispose scope"
+			: "Failed to run scope cleanup";
+	throw new AggregateError(errors, `${phaseLabel}${scopeLabel}.`);
 }
 
 export class Scope {
@@ -128,7 +151,7 @@ export class Scope {
 		if (this.disposed) {
 			const errors: unknown[] = [];
 			runCleanupWithHandling(this, cleanup, 0, 1, "immediate", errors);
-			throwIfErrors(errors, this, "immediate");
+			throwAggregateCleanupError(errors, this, "immediate");
 			return () => {
 				// noop removal; cleanup already executed.
 			};
@@ -161,8 +184,8 @@ export class Scope {
 		const cleanups = Array.from(this.cleanups);
 		this.cleanups.clear();
 
-		const errors: unknown[] = [];
 		const total = cleanups.length;
+		const errors: unknown[] = [];
 
 		for (let index = cleanups.length - 1; index >= 0; index -= 1) {
 			const cleanup = cleanups[index];
@@ -177,7 +200,7 @@ export class Scope {
 			);
 		}
 
-		throwIfErrors(errors, this, "dispose");
+		throwAggregateCleanupError(errors, this, "dispose");
 	}
 
 	attachToParent(detach: () => void): void {
@@ -227,8 +250,16 @@ export function registerScopeCleanup(
 	scope: Scope | undefined = activeScope,
 ): () => void {
 	if (scope === undefined) {
+		if (process.env.NODE_ENV !== "production") {
+			console.warn(
+				"registerScopeCleanup() called with no active scope; cleanup runs immediately.",
+			);
+		}
+		const errors: unknown[] = [];
+		runCleanupWithHandling(undefined, cleanup, 0, 1, "immediate", errors);
+		throwAggregateCleanupError(errors, undefined, "immediate");
 		return () => {
-			// No active scope; caller retains responsibility for manual cleanup.
+			// cleanup already executed; nothing to remove.
 		};
 	}
 

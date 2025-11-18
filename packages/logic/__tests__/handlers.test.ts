@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { computed } from "../../core/computed";
 import { deepSignal } from "../../core/deepSignal";
+import { nextTick } from "../../core/nextTick";
 import { signal } from "../../core/signal";
 import {
 	createComputedHandler,
@@ -10,7 +11,7 @@ import {
 } from "../handlers";
 
 describe("createSignalHandler", () => {
-	it("subscribes and updates snapshots for signals", () => {
+	it("subscribes and updates snapshots for signals", async () => {
 		const count = signal(0);
 		const handle = createSignalHandler(count);
 
@@ -36,7 +37,7 @@ describe("createSignalHandler", () => {
 });
 
 describe("createComputedHandler", () => {
-	it("tracks computed values", () => {
+	it("tracks computed values", async () => {
 		const base = signal(2);
 		const doubled = computed(() => base.value * 2);
 		const handle = createComputedHandler(doubled);
@@ -60,7 +61,7 @@ describe("createComputedHandler", () => {
 });
 
 describe("createDeepSignalHandler", () => {
-	it("tracks deep signal changes without cloning", () => {
+	it("tracks deep signal changes without cloning", async () => {
 		const state = deepSignal({ nested: { count: 0 } });
 		const handle = createDeepSignalHandler(state);
 		const first = handle.getSnapshot();
@@ -77,7 +78,9 @@ describe("createDeepSignalHandler", () => {
 		});
 
 		state.nested.count = 1;
+		await nextTick();
 		state.nested.count = 2;
+		await nextTick();
 
 		expect(snapshots).toHaveLength(2);
 		expect(snapshots[0].value).toBe(state);

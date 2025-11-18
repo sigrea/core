@@ -1,174 +1,311 @@
 # @sigrea/core
 
-`@sigrea/core` wraps [alien-signals](https://github.com/stackblitz/alien-signals) and [alien-deepsignals](https://github.com/CCherry07/alien-deepsignals) so that shallow signals, deep reactive objects, scope-aware effects, and lifecycle helpers live behind a single, predictable API.
+<p align="center">
+  <img src="./images/sigrea_character_mendako.png" alt="Sigrea mascot" width="240" />
+</p>
 
-Sigrea keeps alien-signals as the scheduling engine, layers deep reactivity through alien-deepsignals, and adds high-level tooling (`defineLogic`, `onMount`, `mountLogic`, etc.) so domain logic can stay framework-agnostic while adapters connect it to React, Vue, or other runtimes.
+Sigrea extends [alien-signals](https://github.com/stackblitz/alien-signals) with Vue-inspired deep reactivity while adopting the framework-neutral spirit popularized by [Nano Stores](https://github.com/nanostores/nanostores). One package bundles atomic signals, proxy-backed state, and lifecycle-safe logic helpers, providing a single entry point.
 
-## Installation
+- **Renderer-agnostic.** Scope APIs and logic factories keep domain code detached from React, Vue, or custom hosts while still supporting familiar hooks.
+- **Deep reactivity.** `deepSignal` proxies nested objects, Maps, Sets, and typed arrays without extra decorators, and readonly or shallow variants share the same scheduler.
+- **Consistent lifecycles.** `Scope`, `defineLogic`, `onMount`, and cleanup helpers mirror Vue’s effect scopes so cleanups still run even when tests fail.
+- **Lightweight core.** Signals, watchers, and lifecycle utilities rely on alien-signals, so Sigrea provides focused helpers instead of re-implementing schedulers.
+- **Testing-friendly ergonomics.** `mountLogic`, `cleanupLogic`, and `cleanupLogics` mirror host lifecycles without rendering layers, much like Nano Stores keeps stores outside components.
+
+## Table of Contents
+
+- [Install](#install)
+- [Why Sigrea](#why-sigrea)
+- [Quick Example](#quick-example)
+- [Core Concepts](#core-concepts)
+  - [Architecture](#architecture)
+  - [Signals and Computed Values](#signals-and-computed-values)
+  - [Deep Signals and Readonly Views](#deep-signals-and-readonly-views)
+  - [Watching and Effects](#watching-and-effects)
+  - [Scopes and Logic Lifecycles](#scopes-and-logic-lifecycles)
+- [Testing](#testing)
+- [Development](#development)
+- [License](#license)
+
+## Install
 
 ```bash
-pnpm add @sigrea/core
+npm install @sigrea/core
 ```
 
-Sigrea targets Node.js 20+ and pnpm 10+. Equivalent npm or yarn commands work as expected.
+Requires Node.js 20 or later.
 
-## What Sigrea Provides
+## Why Sigrea
 
-- **Shared primitives** – `signal`, `computed`, `deepSignal`, `watch`, and `watchEffect` are powered by alien-signals while honoring Sigrea’s scope semantics.
-- **Lifecycle scaffolding** – `defineLogic`, `onMount`, and `onUnmount` let you describe setup/cleanup once and reuse it across adapters and tests.
-- **Testing helpers** – `mountLogic`, `cleanupLogic`, and `cleanupLogics` let you exercise logic modules without a UI runtime.
-- **Adapter-friendly contracts** – higher-level packages can receive logic factories and manage lifecycles on your behalf.
+Sigrea began as an experiment to bring Vue-style deep reactivity to the lightweight, framework-agnostic workflow inspired by Nanostores. alien-signals orchestrates dependency tracking and scheduling, while Sigrea contributes proxy handlers, scope helpers, and logic factories. This split keeps the core small but focused: signals remain mutable, computed values stay cached until invalidated, and every watcher shares one scheduler so flush modes stay predictable.
 
-## Quick Start
+## Quick Example
 
-### Basic API
+**Basic Usage:**
 
 ```ts
-import { defineLogic, signal } from "@sigrea/core";
+import { signal, computed } from "@sigrea/core";
 
+const count = signal(0);
+const doubled = computed(() => count.value * 2);
+
+count.value = 5;
+console.log(doubled.value); // 10
+```
+
+**With Logic Factories:**
+
+```ts
+// logics/CounterLogic.ts
 interface CounterProps {
   initialCount: number;
 }
 
 export const CounterLogic = defineLogic<CounterProps>()((props) => {
   const count = signal(props.initialCount);
+  const doubled = computed(() => count.value * 2);
 
-  const increment = () => {
-    count.value += 1;
-  };
+  function increment() {
+    count.value++;
+  }
 
-  const reset = () => {
-    count.value = props.initialCount;
-  };
+  function decrement() {
+    count.value--;
+  }
+
+  watch(count, (newVal) => {
+    console.log("count changed:", newVal);
+  });
+
+  onMount(() => console.log("CounterLogic mounted"));
+  onUnmount(() => console.log("CounterLogic unmounted"));
 
   return {
-    count,
+    count: readonly(count),
+    doubled,
     increment,
-    reset,
+    decrement,
   };
 });
+
+// Usage
+const counterLogic = mountLogic(CounterLogic, { initialCount: 0 });
+counterLogic.increment();
+console.log(counterLogic.count.value); // 1
 ```
 
-### Lifecycle helpers
+**Composing Logic:**
 
 ```ts
-import { defineLogic, onMount, onUnmount, signal } from "@sigrea/core";
+// logics/SearchLogic.ts
+export type Category = "all" | "kitchen" | "desk";
 
-export const SessionLogic = defineLogic()(() => {
-  const status = signal<"idle" | "active">("idle");
+export const SearchLogic = defineLogic(() => {
+  const query = signal("");
+  const category = signal<Category>("all");
 
-  onMount(() => {
-    status.value = "active";
-  });
+  function setQuery(value: string) {
+    query.value = value;
+  }
 
-  onUnmount(() => {
-    status.value = "idle";
-  });
-
-  return { status };
-});
-```
-
-### Compose logic
-
-```ts
-import { defineLogic, signal } from "@sigrea/core";
-
-interface ChildProps {
-  label: string;
-}
-
-export const ChildLogic = defineLogic<ChildProps>()((props) => {
-  const message = signal(`child: ${props.label}`);
-  return { message };
-});
-
-interface ParentProps {
-  childLabel: string;
-}
-
-export const ParentLogic = defineLogic<ParentProps>()((props, { get }) => {
-  const child = get(ChildLogic, { label: props.childLabel });
-  const header = signal("parent");
+  function setCategory(value: Category) {
+    category.value = value;
+  }
 
   return {
-    child,
-    header,
+    query: readonly(query),
+    category: readonly(category),
+    setQuery,
+    setCategory,
   };
 });
-```
 
-### Test helpers
+// logics/ProductListLogic.ts
+import { SearchLogic, type Category } from "./SearchLogic";
 
-```ts
-import { afterEach, expect, it } from "vitest";
-import { cleanupLogics, mountLogic } from "@sigrea/core";
-import { CounterLogic } from "./CounterLogic";
+interface Product {
+  id: string;
+  name: string;
+  category: Category;
+}
 
-afterEach(() => {
-  cleanupLogics();
+export const ProductListLogic = defineLogic((_, { get }) => {
+  const searchLogic = get(SearchLogic);
+
+  const products = deepSignal<Product[]>([
+    { id: "1", name: "Coffee Mug", category: "kitchen" },
+    { id: "2", name: "Laptop Stand", category: "desk" },
+    { id: "3", name: "Desk Lamp", category: "desk" },
+  ]);
+
+  const filteredProducts = computed(() => {
+    const query = searchLogic.query.value.toLowerCase();
+    const selectedCategory = searchLogic.category.value;
+
+    return products.filter((product) => {
+      const matchesQuery = product.name.toLowerCase().includes(query);
+      const matchesCategory =
+        selectedCategory === "all" || product.category === selectedCategory;
+      return matchesQuery && matchesCategory;
+    });
+  });
+
+  return {
+    products: readonly(products),
+    filteredProducts,
+  };
 });
 
-it("increments", () => {
-  const counter = mountLogic(CounterLogic, { initialCount: 0 });
-  counter.increment();
-  expect(counter.count.value).toBe(1);
-});
+// Usage
+const searchLogic = mountLogic(SearchLogic);
+const productListLogic = mountLogic(ProductListLogic);
+
+searchLogic.setCategory("desk");
+console.log(productListLogic.filteredProducts.value.length); // 2
+
+searchLogic.setQuery("lamp");
+console.log(productListLogic.filteredProducts.value.length); // 1
 ```
 
-### Watch reactive sources
+## Core Concepts
+
+### Architecture
+
+Sigrea layers alien-signals primitives, deep proxy handlers, and scope-aware lifecycles, allowing features to work directly with logic factories.
+
+```
+logic setup ──► scope ──► signals / deep signals ──► watch & watchEffect
+                    │                                   │
+                    └──────────── cleanup hooks ◄───────┘
+```
+
+### Signals and Computed Values
+
+`signal(initial)` returns a mutable cell backed by alien-signals. `.value` reads and writes synchronously, and updates are queued for downstream watchers on the shared scheduler. `computed(fn)` memoizes derived values until any tracked signal invalidates them. Use `nextTick()` when you need to wait for queued watchers.
 
 ```ts
-import { signal, watch, watchEffect } from "@sigrea/core";
+const count = signal(1);
+const doubled = computed(() => count.value * 2);
 
-const count = signal(0);
+count.value = 3;
+console.log(doubled.value); // 6
+```
 
-const stop = watch(
-  count,
-  (value, previous) => {
-    console.log("count changed", { value, previous });
+### Deep Signals and Readonly Views
+
+`deepSignal(value)` proxies objects, arrays, typed arrays, `Map`, `Set`, `WeakMap`, and `WeakSet`. Nested writes propagate to shallow and deep subscriptions, so watchers can decide how much work they perform. Stored signals are automatically unwrapped, keeping ergonomics close to Vue refs and Nanostores maps. Use `shallowDeepSignal()` when only top-level mutations should trigger updates, and wrap exposures in `readonly` or `readonlyShallowDeepSignal()` to pass them across logic boundaries without allowing writes.
+
+```ts
+const user = deepSignal({
+  name: "Mendako",
+  address: {
+    city: "Tokyo",
+    country: "Japan",
+  },
+});
+
+user.address.city = "Kyoto"; // deep mutation notifies watchers
+
+const publicUser = readonly(user);
+console.log(publicUser.address.city); // "Kyoto"
+
+publicUser.name = "Sora"; // throws in dev, noop in prod
+```
+
+### Watching and Effects
+
+`watch(source, callback, options?)` accepts a single signal, a getter, or an array of sources. It passes `newValue`, `oldValue`, and an `onCleanup` helper so you can unregister resources on the next run. `watchEffect(effect, options?)` auto-tracks every signal accessed during the effect. Both share the scheduler with `signal` and `computed`, ensuring watchers for nested proxies never miss updates.
+
+```ts
+const settings = deepSignal({
+  preferences: { theme: "light" },
+  locale: { language: "ja", region: "JP" },
+});
+
+watch(
+  () => settings.preferences.theme,
+  (theme, oldTheme) => {
+    console.log(`theme: ${oldTheme} → ${theme}`);
   },
   { immediate: true },
 );
 
-const stopEffect = watchEffect(() => {
-  console.log(count.value);
+watchEffect(() => {
+  console.log(`locale: ${settings.locale.language}-${settings.locale.region}`);
 });
 
-stop();
-stopEffect();
+settings.preferences.theme = "dark";
+settings.locale.language = "en";
+settings.locale.region = "US";
+
+// Output:
+// "theme: undefined → light"
+// "locale: ja-JP"
+// "theme: light → dark"
+// "locale: en-US"
 ```
 
-Both `watch` and `watchEffect` register their cleanup with the active Sigrea scope
-(for example inside `onMount` or a `defineLogic` setup). When that scope disposes,
-each reactive watcher is stopped automatically. If no scope is active, call the
-`stop` handle manually as shown above.
+### Scopes and Logic Lifecycles
 
-## API Notes
+Every logic factory owns a root `Scope`, and cleanup callbacks register automatically while it is active. `defineLogic` and `mountLogic` wrap this plumbing so you can mount instances, call `cleanupLogics()` in tests, and rely on consistent cleanup. `onMount` runs setup code when the logic mounts, while `onUnmount` registers cleanup callbacks to release intervals, sockets, or watchers when the logic unmounts.
 
-- `defineLogic` returns a factory that can be curried with props. Adapters and test helpers accept the factory followed by props (`mountLogic(CounterLogic, props)`).
-- `signal`, `computed`, `deepSignal`, `watch`, and `watchEffect` mirror their alien-signals counterparts but honor Sigrea scopes so cleanups are automatic.
-- `onMount` nests scopes, allowing each logic instance to register timers, effects, or subscriptions that are disposed via `onUnmount`.
-- `mountLogic`, `cleanupLogic`, and `cleanupLogics` mirror adapter behavior, making unit tests predictable.
+```ts
+export const TimerLogic = defineLogic(() => {
+  const count = signal(0);
+  let intervalId: ReturnType<typeof setInterval> | undefined;
 
-### defineLogic props quick reference
+  onMount(() => {
+    intervalId = setInterval(() => {
+      count.value += 1;
+    }, 1000);
+  });
 
-- `defineLogic()` → no props; call the returned factory as `logic()`.
-- `defineLogic<Props>()` → props are required unless every key in `Props` is optional.
-- Optional props allow calling `logic()` or `logic({ ... })`; required props must be passed explicitly.
+  onUnmount(() => {
+    if (intervalId !== undefined) {
+      clearInterval(intervalId);
+    }
+  });
 
-## Scope Cleanup Error Handling
+  return {
+    count: readonly(count),
+  };
+});
 
-- Sigrea aggregates cleanup failures and rethrows them as an `AggregateError` when a scope disposes or when a cleanup is registered after disposal.
-- `setScopeCleanupErrorHandler` installs a process-wide hook. Use it sparingly, and reset the handler once you are done so other code paths are not affected.
+const timerLogic = mountLogic(TimerLogic);
+timerLogic.count.value; // -> 0…1…2…
+cleanupLogics(); // stops the interval
+```
+
+## Testing
+
+```ts
+// tests/CounterLogic.test.ts
+import { CounterLogic } from "../logics/CounterLogic";
+
+afterEach(() => cleanupLogics());
+
+it("increments and exposes derived state", () => {
+  const counterLogic = mountLogic(CounterLogic, { initialCount: 10 });
+
+  counterLogic.increment();
+
+  expect(counterLogic.count.value).toBe(11);
+  expect(counterLogic.doubled.value).toBe(22);
+});
+```
 
 ## Development
 
-- `pnpm install` – install dependencies
-- `pnpm test` – run the Vitest suite
-- `pnpm build` – emit production artifacts
-- See `CONTRIBUTING.md` and OpenSpec guidelines for contribution workflows
+Development scripts prefer pnpm. npm or yarn work too, but pnpm keeps dependency resolution identical to CI.
+
+- `pnpm install` — install dependencies.
+- `pnpm test` — run the Vitest suite once (no watch).
+- `pnpm test:coverage` — collect V8 coverage for release gating.
+- `pnpm build` — compile via unbuild to produce dual CJS/ESM bundles.
+- `pnpm cicheck` — run tests, type-checks, and Biome formatting exactly like CI.
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for workflow details.
 
 ## License
 
-MIT — see `LICENSE`.
+MIT — see [LICENSE](./LICENSE).
