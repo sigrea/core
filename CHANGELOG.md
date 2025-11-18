@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.2.3
+
+[compare changes](https://github.com/sigrea/core/compare/v0.2.2...v0.2.3)
+
+### 🩹 Fixes
+
+- Quote npm config keys for gh packages ([45c8320](https://github.com/sigrea/core/commit/45c8320))
+
+### ❤️ Contributors
+
+- Aose-yuu <aose.developer@gmail.com>
+
 ## v0.2.2
 
 [compare changes](https://github.com/sigrea/core/compare/v0.2.1...v0.2.2)
