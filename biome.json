@@ -8,8 +8,11 @@
 			}
 		}
 	},
-	"formatter": { "enabled": true },
+	"formatter": {
+		"enabled": true
+	},
 	"files": {
-		"ignore": ["dist/**", "coverage/**"]
+		"include": ["packages/**"],
+		"ignore": ["packages/**/dist/**", "packages/**/coverage/**"]
 	}
 }
