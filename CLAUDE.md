@@ -116,14 +116,13 @@ packages/
 ## Commit Conventions
 
 - **Conventional Commits**: `<type>: <summary>` format (e.g., `feat: add scope watcher`, `fix(deepSignal): unwrap nested signals`)
-- **Changesets**: Add changeset with `pnpm changeset` for user-facing changes
-  - Not required for: docs, chore, refactor-only, test-only
+- **Changelog**: Changelogen reads commit history directly. Make sure user-facing work lands as `feat`, `fix`, etc., or clearly describe the impact in the PR body.
 
-## Changesets & Release Flow
+## Release Flow
 
-- After merge to main, Changesets action automatically creates/updates "Version Packages" PR
-- Maintainers merge Version PR when ready to release, then manually execute `publish` workflow (workflow dispatch)
-- `publish` runs build → test → npm publish (with --provenance) → tag `vX.Y.Z` → auto-generate GitHub Release
+- Maintainers run `pnpm release` locally, which executes tests, builds, bumps the version via Changelogen, and commits/tag the release (e.g., `chore(release): vX.Y.Z` plus `vX.Y.Z` tag).
+- Push the commit and tag (`git push --follow-tags`). This triggers `.github/workflows/publish.yml` automatically or it can be re-run via `workflow_dispatch`.
+- `publish` installs deps, runs tests/build, publishes to npm (with `--provenance`) and GitHub Packages, ensures the tag exists, and syncs GitHub Release notes via `pnpm dlx changelogen gh release vX.Y.Z --token $GITHUB_TOKEN`.
 
 ## Important Notes
 

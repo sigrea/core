@@ -19,19 +19,15 @@ TypeScript strict mode, Biome for formatting, Vitest for tests.
 
 Conventional Commits are required. Examples: `feat: ...`, `fix(scope): ...`, `docs: ...`.
 
-## Changesets
+## Changelog Entries
 
-Add a changeset for any user-facing change:
-features, bug fixes that affect consumers, deprecations, or breaking changes.
-Run `pnpm changeset` locally and commit the generated file.
-
-No changeset is required for docs, chore, refactor-only, or test-only changes.
+Changelogen reads Conventional Commits directly, so please keep commit messages descriptive. Any user-facing change (features, fixes, deprecations, breaking updates) should have a clear `feat`, `fix`, or similar commit. Non-user-facing changes can use `chore`, `test`, etc. For PRs that squash multiple commits, summarize the user impact in the PR description so release managers can double-check the changelog entry.
 
 ## Pull Requests
 
 Ensure the following before requesting review:
 CI passes (typecheck/format/test-build) and the PR title follows Conventional Commits.
-Add a changeset if the change is user-facing; otherwise mention N/A in the PR template.
+Summarize any user-facing change in the PR template so Changelogen output remains accurate.
 
 On pull requests, compressed size checks (gzip/brotli) run against built artifacts.
 If a significant size increase is reported, please consider API surface, tree-shaking, and dependency choices.
@@ -43,19 +39,11 @@ You do not need to create labels manually.
 
 ## Release Workflow
 
-This repository uses Changesets for versioning and GitHub Actions for publishing.
+This repository now uses [changelogen](https://github.com/unjs/changelogen) to infer the next semantic version from Conventional Commits, update `CHANGELOG.md`, and create the release commit plus tag. The workflow is intentionally linear so that a single maintainer can ship safely end to end.
 
-Current setup (manual publish):
+1. Ensure `main` is up to date and clean. Run `pnpm changelog --no-output` if you want to preview the generated notes without touching the tree.
+2. Execute `pnpm release`. This script runs `pnpm test`, `pnpm build`, and `changelogen --release` in sequence. The command bumps the version in `package.json`, rewrites `CHANGELOG.md`, and creates a `chore(release): vX.Y.Z` commit alongside the annotated `vX.Y.Z` tag.
+3. Push the commit and tag together: `git push origin main --follow-tags`. If you need to stage multiple release commits, push in chronological order so tags stay in sync.
+4. Tag pushes trigger `.github/workflows/publish.yml` automatically (the workflow also remains runnable via `workflow_dispatch` for recovery). The job runs on the `release` environment, installs dependencies, executes tests and build, publishes to npm with provenance plus GitHub Packages, backfills the tag if it is missing, and finally calls `pnpm dlx changelogen gh release vX.Y.Z --token $GITHUB_TOKEN` to sync the GitHub Release body with the freshly updated `CHANGELOG.md`.
 
-1. On every change merged to `main`, a Changesets action opens or updates a "Version Packages" PR.
-   The version bump and changelog are maintained in that PR.
-2. When maintainers decide to release, they merge the version PR, then run the `publish` workflow manually (workflow dispatch) in the `release` environment.
-3. The `publish` workflow builds, runs tests, publishes to npm with provenance (`--provenance`), tags the commit as `vX.Y.Z`, and creates a GitHub Release with auto-generated notes.
-
-Optional alternative (automatic publish):
-
-It is possible to automate publishing on merge to `main` by granting the release workflow `id-token: write` and configuring Changesets action to run `pnpm changeset publish` automatically. This removes the manual `workflow_dispatch` step and publishes as soon as the version PR is merged. Pros: faster releases; Cons: less human gating for last checks and environment coordination.
-
-Operational policy:
-
-We keep manual publish by default to allow final verification and coordinated release notes. When switching to auto-publish, announce the policy in this document and ensure tokens/permissions are properly configured.
+If the publish workflow fails, fix the root cause, re-run it via `workflow_dispatch`, and avoid creating a new tag. If you must roll back, delete the tag locally and remotely, revert the release commit, and start over from step 1.
