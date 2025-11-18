@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.2.2
+
+[compare changes](https://github.com/sigrea/core/compare/v0.2.1...v0.2.2)
+
+### 🩹 Fixes
+
+- Configure npmrc for github packages ([0e8258a](https://github.com/sigrea/core/commit/0e8258a))
+
+### ❤️ Contributors
+
+- Aose-yuu <aose.developer@gmail.com>
+
 ## v0.2.1
 
 [compare changes](https://github.com/sigrea/core/compare/v0.2.0...v0.2.1)
