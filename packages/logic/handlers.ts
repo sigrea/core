@@ -1,7 +1,7 @@
 import { toValue } from "../core/reactivity";
 
 import type { Computed } from "../core/computed";
-import type { DeepSignal } from "../core/deepSignal";
+import { type DeepSignal, trackDeepSignalVersion } from "../core/deepSignal";
 import type { Signal } from "../core/signal";
 import { type WatchOptions, type WatchStopHandle, watch } from "../core/watch";
 
@@ -19,8 +19,10 @@ export interface SnapshotHandler<T> {
 
 interface HandlerConfig<T> {
 	read: () => T;
+	watchSource?: () => unknown;
 	options?: WatchOptions;
 	areEqual?: (next: T, prev: T) => boolean;
+	onAccept?: () => void;
 }
 
 function createSnapshot<T>(value: T, version: number): Snapshot<T> {
@@ -29,8 +31,10 @@ function createSnapshot<T>(value: T, version: number): Snapshot<T> {
 
 function createHandler<T>({
 	read,
+	watchSource,
 	options,
 	areEqual = Object.is,
+	onAccept,
 }: HandlerConfig<T>): SnapshotHandler<T> {
 	let currentValue = read();
 	let version = 0;
@@ -40,14 +44,19 @@ function createHandler<T>({
 
 	function subscribe(listener: Listener): () => void {
 		let stopped = false;
+		const normalizedOptions: WatchOptions =
+			options === undefined ? { flush: "sync" } : { flush: "sync", ...options };
+
+		const watchGetter = watchSource ?? read;
 
 		const stop: WatchStopHandle = watch(
-			read,
-			(value) => {
+			watchGetter,
+			() => {
 				if (stopped) {
 					return;
 				}
 
+				const value = read();
 				if (areEqual(value, currentValue)) {
 					return;
 				}
@@ -55,9 +64,10 @@ function createHandler<T>({
 				currentValue = value;
 				version += 1;
 				snapshot = createSnapshot(value, version);
+				onAccept?.();
 				listener();
 			},
-			options,
+			normalizedOptions,
 		);
 
 		return () => {
@@ -89,9 +99,23 @@ export function createComputedHandler<T>(
 export function createDeepSignalHandler<T extends object>(
 	source: DeepSignal<T>,
 ): SnapshotHandler<T> {
+	let currentVersion = trackDeepSignalVersion(
+		source as DeepSignal<object>,
+		false,
+	);
+	let pendingVersion = currentVersion;
 	return createHandler({
 		read: () => toValue(source) as T,
-		options: { deep: true },
-		areEqual: () => false,
+		watchSource: () => {
+			pendingVersion = trackDeepSignalVersion(
+				source as DeepSignal<object>,
+				false,
+			);
+			return pendingVersion;
+		},
+		areEqual: () => pendingVersion === currentVersion,
+		onAccept: () => {
+			currentVersion = pendingVersion;
+		},
 	});
 }

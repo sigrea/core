@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { onMount } from "../../lifecycle/onMount";
 import { onUnmount } from "../../lifecycle/onUnmount";
+import { nextTick } from "../nextTick";
 import { signal } from "../signal";
 import { watchEffect } from "../watchEffect";
 
@@ -15,7 +16,7 @@ describe("signal", () => {
 		expect(count.value).toBe(1);
 	});
 
-	it("does not track dependencies when peek is used", () => {
+	it("does not track dependencies when peek is used", async () => {
 		const count = signal(1);
 		let runs = 0;
 
@@ -27,6 +28,7 @@ describe("signal", () => {
 		expect(runs).toBe(1);
 
 		count.value = 2;
+		await nextTick();
 		expect(runs).toBe(1);
 
 		stop();
@@ -41,7 +43,7 @@ describe("signal", () => {
 		expect(maybe.value).toBe(5);
 	});
 
-	it("registers effects created inside onMount scope", () => {
+	it("registers effects created inside onMount scope", async () => {
 		const count = signal(0);
 		let runs = 0;
 
@@ -55,11 +57,35 @@ describe("signal", () => {
 		expect(runs).toBe(1);
 
 		count.value = 1;
+		await nextTick();
 		expect(runs).toBe(2);
 
 		onUnmount(scope);
 
 		count.value = 2;
+		await nextTick();
 		expect(runs).toBe(2);
+	});
+
+	it("ignores redundant assignments", async () => {
+		const count = signal(0);
+		let runs = 0;
+
+		const stop = watchEffect(() => {
+			runs += 1;
+			count.value;
+		});
+
+		expect(runs).toBe(1);
+
+		count.value = 1;
+		await nextTick();
+		expect(runs).toBe(2);
+
+		count.value = 1;
+		await nextTick();
+		expect(runs).toBe(2);
+
+		stop();
 	});
 });

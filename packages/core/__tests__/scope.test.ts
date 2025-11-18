@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
 	ScopeCleanupErrorResponse,
@@ -62,7 +62,7 @@ describe("reactivity scope", () => {
 		expect(called).toBe(true);
 	});
 
-	it("collects cleanup errors and rethrows as aggregate", () => {
+	it("continues running remaining cleanups when cleanups throw", () => {
 		const scope = createScope();
 		const order: string[] = [];
 
@@ -91,8 +91,24 @@ describe("reactivity scope", () => {
 		expect(caught).toBeInstanceOf(AggregateError);
 		const aggregate = caught as AggregateError;
 		expect(aggregate.errors).toHaveLength(2);
+		expect(aggregate.errors[0]).toBeInstanceOf(Error);
 		expect((aggregate.errors[0] as Error).message).toBe("third failure");
 		expect((aggregate.errors[1] as Error).message).toBe("second failure");
+	});
+
+	it("propagates cleanup errors when handler requests it", () => {
+		const scope = createScope();
+		const failure = new Error("boom");
+
+		setScopeCleanupErrorHandler(() => ScopeCleanupErrorResponse.Propagate);
+
+		runWithScope(scope, () => {
+			registerScopeCleanup(() => {
+				throw failure;
+			});
+		});
+
+		expect(() => disposeScope(scope)).toThrow(failure);
 	});
 
 	it("allows handler to suppress cleanup errors", () => {
@@ -108,15 +124,41 @@ describe("reactivity scope", () => {
 		expect(() => disposeScope(scope)).not.toThrow();
 	});
 
-	it("surfaces immediate cleanup errors after suppression check", () => {
+	it("runs cleanup immediately when invoked without an active scope", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		let runs = 0;
+
+		registerScopeCleanup(() => {
+			runs += 1;
+		});
+
+		expect(runs).toBe(1);
+		expect(warn).toHaveBeenCalled();
+		warn.mockRestore();
+	});
+
+	it("aggregates immediate cleanup errors by default", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const failure = new Error("immediate failure");
+		expect(() =>
+			registerScopeCleanup(() => {
+				throw failure;
+			}),
+		).toThrow(AggregateError);
+		warn.mockRestore();
+	});
+
+	it("propagates immediate cleanup errors when handler opts in", () => {
 		const scope = createScope();
-		const error = new Error("immediate failure");
 		disposeScope(scope);
+		const failure = new Error("immediate failure");
+
+		setScopeCleanupErrorHandler(() => ScopeCleanupErrorResponse.Propagate);
 
 		expect(() =>
 			registerScopeCleanup(() => {
-				throw error;
+				throw failure;
 			}, scope),
-		).toThrowError(AggregateError);
+		).toThrow(failure);
 	});
 });
