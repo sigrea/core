@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { deepSignal } from "../deepSignal";
 import { nextTick } from "../nextTick";
@@ -7,6 +7,9 @@ import { signal } from "../signal";
 import { watch } from "../watch";
 
 describe("readonly", () => {
+	const suppressConsoleWarn = () =>
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+
 	it("reflects source updates without exposing setter", () => {
 		const count = signal(1);
 		const view = readonly(count);
@@ -49,17 +52,23 @@ describe("readonly", () => {
 	});
 
 	it("wraps deep signals and blocks nested mutations", () => {
-		const state = deepSignal({ nested: { count: 1 } });
-		const view = readonly(state);
+		const warn = suppressConsoleWarn();
+		try {
+			const state = deepSignal({ nested: { count: 1 } });
+			const view = readonly(state);
 
-		expect(view.nested.count).toBe(1);
-		state.nested.count = 2;
-		expect(view.nested.count).toBe(2);
+			expect(view.nested.count).toBe(1);
+			state.nested.count = 2;
+			expect(view.nested.count).toBe(2);
 
-		// @ts-expect-error readonly proxy rejects writes
-		view.nested.count = 3;
-		expect(view.nested.count).toBe(2);
-		expect(state.nested.count).toBe(2);
+			// @ts-expect-error readonly proxy rejects writes
+			view.nested.count = 3;
+			expect(view.nested.count).toBe(2);
+			expect(state.nested.count).toBe(2);
+			expect(warn).toHaveBeenCalledTimes(1);
+		} finally {
+			warn.mockRestore();
+		}
 	});
 
 	it("tracks readonly deep signal map entries", async () => {
