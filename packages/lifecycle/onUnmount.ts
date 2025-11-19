@@ -15,7 +15,7 @@ export function onUnmount(target: Scope | Cleanup): void {
 			// No active scope: execute immediately to avoid dangling cleanup.
 			const result = target();
 			if (isPromiseLike(result)) {
-				result.catch((error) => {
+				Promise.resolve(result).catch((error) => {
 					logUnhandledAsyncError("onUnmount cleanup", error);
 				});
 			}

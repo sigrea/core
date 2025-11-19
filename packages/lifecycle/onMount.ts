@@ -22,7 +22,7 @@ function registerMountResult(result: MountCallbackResult, scope: Scope): void {
 	}
 
 	if (isPromiseLike(result)) {
-		result
+		Promise.resolve(result)
 			.then((cleanup) => {
 				if (typeof cleanup === "function") {
 					registerScopeCleanup(cleanup, scope);
