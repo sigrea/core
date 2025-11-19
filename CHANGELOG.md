@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.0
+
+[compare changes](https://github.com/sigrea/core/compare/591a7f8...v0.3.0)
+
+### 🚀 Enhancements
+
+- Async lifecycle ([#36](https://github.com/sigrea/core/pull/36))
+
+### ❤️ Contributors
+
+- Aose ([@aose-yuu](https://github.com/aose-yuu))
+
 ## v0.2.4
 
 [compare changes](https://github.com/sigrea/core/compare/v0.2.3...v0.2.4)
