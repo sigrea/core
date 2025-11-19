@@ -7,6 +7,7 @@ import { deepSignal } from "../deepSignal";
 import { nextTick } from "../nextTick";
 import { TrackOpType, TriggerOpType } from "../reactivity";
 import { readonly } from "../readonly";
+import type { Cleanup } from "../scope";
 import { signal } from "../signal";
 import { watch } from "../watch";
 
@@ -293,6 +294,123 @@ describe("watch", () => {
 		expect(seen).toEqual([0, 1]);
 
 		stop();
+	});
+
+	it("accepts cleanup returned directly from the callback", async () => {
+		const count = signal(0);
+		const events: string[] = [];
+
+		const stop = watch(
+			count,
+			() => {
+				events.push("run");
+				return () => {
+					events.push("cleanup");
+				};
+			},
+			{ immediate: true },
+		);
+
+		expect(events).toEqual(["run"]);
+
+		count.value = 1;
+		await nextTick();
+		expect(events).toEqual(["run", "cleanup", "run"]);
+
+		stop();
+	});
+
+	it("registers cleanup resolved from a promise returned by the callback", async () => {
+		const count = signal(0);
+		const events: string[] = [];
+
+		const stop = watch(
+			count,
+			async () => {
+				events.push("run");
+				await Promise.resolve();
+				return () => {
+					events.push("cleanup");
+				};
+			},
+			{ immediate: true },
+		);
+
+		await Promise.resolve();
+		expect(events).toEqual(["run"]);
+
+		count.value = 1;
+		await nextTick();
+		await Promise.resolve();
+		expect(events).toEqual(["run", "cleanup", "run"]);
+
+		stop();
+	});
+
+	it("runs async cleanup even if the promise resolves after invalidation", async () => {
+		const count = signal(0);
+		const events: string[] = [];
+		const pending: Array<() => void> = [];
+
+		const stop = watch(
+			count,
+			() => {
+				const runId = count.value;
+				events.push(`run-${runId}`);
+				return new Promise<Cleanup>((resolve) => {
+					pending.push(() => {
+						resolve(() => {
+							events.push(`cleanup-${runId}`);
+						});
+					});
+				});
+			},
+			{ immediate: true },
+		);
+
+		await nextTick();
+		expect(events).toEqual(["run-0"]);
+
+		count.value = 1;
+		await nextTick();
+		expect(events).toEqual(["run-0", "run-1"]);
+
+		pending.shift()?.();
+		await Promise.resolve();
+		expect(events).toEqual(["run-0", "run-1", "cleanup-0"]);
+
+		stop();
+	});
+
+	it("runs async cleanup even if the watcher is stopped before it resolves", async () => {
+		const count = signal(0);
+		const events: string[] = [];
+		let resolveCleanup: (() => void) | undefined;
+
+		const stop = watch(
+			count,
+			() => {
+				events.push("run");
+				return new Promise<Cleanup>((resolve) => {
+					resolveCleanup = () => {
+						resolve(() => {
+							events.push("cleanup");
+						});
+					};
+				});
+			},
+			{ immediate: true },
+		);
+
+		await nextTick();
+		expect(events).toEqual(["run"]);
+
+		stop();
+		expect(events).toEqual(["run"]);
+
+		resolveCleanup?.();
+		await Promise.resolve();
+		expect(events).toEqual(["run", "cleanup"]);
 	});
 
 	it("updates array length signals when adding elements via index assignment", async () => {
