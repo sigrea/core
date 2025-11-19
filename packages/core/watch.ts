@@ -328,8 +328,6 @@ class Watcher {
 			return;
 		}
 
-		const { context, onCleanup } = this.prepareCleanupContext();
-
 		if (this.callback !== undefined) {
 			const newValue = this.effect.run();
 			const dependencyTriggered = immediateFirstRun !== true;
@@ -348,6 +346,7 @@ class Watcher {
 			}
 
 			if (changed) {
+				const { context, onCleanup } = this.prepareCleanupContext();
 				const formattedOldValue = this.normalizeOldValue();
 				this.runCleanup();
 				const result = this.callback(newValue, formattedOldValue, onCleanup);
@@ -357,6 +356,7 @@ class Watcher {
 			return;
 		}
 
+		const { onCleanup } = this.prepareCleanupContext();
 		this.currentOnCleanup = onCleanup;
 		this.runCleanup();
 		try {
