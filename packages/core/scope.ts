@@ -123,7 +123,7 @@ function runCleanupWithHandling(
 	try {
 		const result = cleanup();
 		if (isPromiseLike(result)) {
-			void result.catch((error) => {
+			void Promise.resolve(result).catch((error) => {
 				handleAsyncError(error);
 			});
 		}

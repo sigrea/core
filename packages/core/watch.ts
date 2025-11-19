@@ -256,7 +256,7 @@ class Watcher {
 		}
 
 		if (isPromiseLike(result)) {
-			result
+			Promise.resolve(result)
 				.then((resolved) => {
 					this.handleCallbackResult(resolved, context, label);
 				})
@@ -270,7 +270,7 @@ class Watcher {
 		try {
 			const result = cleanupFn();
 			if (isPromiseLike(result)) {
-				result.catch((error) => {
+				Promise.resolve(result).catch((error) => {
 					logUnhandledAsyncError("watch cleanup", error);
 				});
 			}
