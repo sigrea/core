@@ -1,4 +1,6 @@
-export type Cleanup = () => void;
+import { isPromiseLike } from "./internal/async";
+
+export type Cleanup = () => void | Promise<void>;
 
 export type ScopeCleanupPhase = "dispose" | "immediate";
 
@@ -87,9 +89,10 @@ function runCleanupWithHandling(
 	phase: ScopeCleanupPhase,
 	errors?: unknown[],
 ): void {
-	try {
-		cleanup();
-	} catch (error) {
+	const handleError = (
+		error: unknown,
+		asyncError: boolean,
+	): ScopeCleanupErrorResponse | undefined => {
 		const response = resolveCleanupErrorResponse(
 			scope,
 			cleanup,
@@ -98,14 +101,36 @@ function runCleanupWithHandling(
 			phase,
 			error,
 		);
-		if (response === ScopeCleanupErrorResponse.Propagate) {
-			throw error;
-		}
 		if (
 			response !== ScopeCleanupErrorResponse.Suppress &&
 			errors !== undefined
 		) {
 			errors.push(error);
+		}
+		return response;
+	};
+
+	const handleAsyncError = (error: unknown): void => {
+		const response = handleError(error, true);
+		if (response === ScopeCleanupErrorResponse.Propagate) {
+			throw error;
+		}
+		if (response !== ScopeCleanupErrorResponse.Suppress) {
+			throwAggregateCleanupError(errors ?? [error], scope, phase);
+		}
+	};
+
+	try {
+		const result = cleanup();
+		if (isPromiseLike(result)) {
+			void Promise.resolve(result).catch((error) => {
+				handleAsyncError(error);
+			});
+		}
+	} catch (error) {
+		const response = handleError(error, false);
+		if (response === ScopeCleanupErrorResponse.Propagate) {
+			throw error;
 		}
 	}
 }

@@ -15,6 +15,9 @@ describe("reactivity scope", () => {
 		setScopeCleanupErrorHandler(undefined);
 	});
 
+	const suppressConsoleError = () =>
+		vi.spyOn(console, "error").mockImplementation(() => {});
+
 	it("activates scope while running and restores afterwards", () => {
 		const scope = createScope();
 		let activeDuringRun = false;
@@ -63,37 +66,43 @@ describe("reactivity scope", () => {
 	});
 
 	it("continues running remaining cleanups when cleanups throw", () => {
-		const scope = createScope();
-		const order: string[] = [];
-
-		runWithScope(scope, () => {
-			registerScopeCleanup(() => {
-				order.push("first");
-			});
-			registerScopeCleanup(() => {
-				order.push("second");
-				throw new Error("second failure");
-			});
-			registerScopeCleanup(() => {
-				order.push("third");
-				throw new Error("third failure");
-			});
-		});
-
-		let caught: unknown;
+		const errorSpy = suppressConsoleError();
 		try {
-			disposeScope(scope);
-		} catch (error) {
-			caught = error;
-		}
+			const scope = createScope();
+			const order: string[] = [];
 
-		expect(order).toEqual(["third", "second", "first"]);
-		expect(caught).toBeInstanceOf(AggregateError);
-		const aggregate = caught as AggregateError;
-		expect(aggregate.errors).toHaveLength(2);
-		expect(aggregate.errors[0]).toBeInstanceOf(Error);
-		expect((aggregate.errors[0] as Error).message).toBe("third failure");
-		expect((aggregate.errors[1] as Error).message).toBe("second failure");
+			runWithScope(scope, () => {
+				registerScopeCleanup(() => {
+					order.push("first");
+				});
+				registerScopeCleanup(() => {
+					order.push("second");
+					throw new Error("second failure");
+				});
+				registerScopeCleanup(() => {
+					order.push("third");
+					throw new Error("third failure");
+				});
+			});
+
+			let caught: unknown;
+			try {
+				disposeScope(scope);
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(order).toEqual(["third", "second", "first"]);
+			expect(caught).toBeInstanceOf(AggregateError);
+			const aggregate = caught as AggregateError;
+			expect(aggregate.errors).toHaveLength(2);
+			expect(aggregate.errors[0]).toBeInstanceOf(Error);
+			expect((aggregate.errors[0] as Error).message).toBe("third failure");
+			expect((aggregate.errors[1] as Error).message).toBe("second failure");
+			expect(errorSpy).toHaveBeenCalledTimes(2);
+		} finally {
+			errorSpy.mockRestore();
+		}
 	});
 
 	it("propagates cleanup errors when handler requests it", () => {
@@ -139,12 +148,18 @@ describe("reactivity scope", () => {
 
 	it("aggregates immediate cleanup errors by default", () => {
 		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-		const failure = new Error("immediate failure");
-		expect(() =>
-			registerScopeCleanup(() => {
-				throw failure;
-			}),
-		).toThrow(AggregateError);
+		const errorSpy = suppressConsoleError();
+		try {
+			const failure = new Error("immediate failure");
+			expect(() =>
+				registerScopeCleanup(() => {
+					throw failure;
+				}),
+			).toThrow(AggregateError);
+			expect(errorSpy).toHaveBeenCalledTimes(1);
+		} finally {
+			errorSpy.mockRestore();
+		}
 		warn.mockRestore();
 	});
 

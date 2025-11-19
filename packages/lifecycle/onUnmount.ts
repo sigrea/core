@@ -1,3 +1,4 @@
+import { isPromiseLike, logUnhandledAsyncError } from "../core/internal/async";
 import type { Cleanup, Scope } from "../core/scope";
 import {
 	disposeScope,
@@ -12,7 +13,12 @@ export function onUnmount(target: Scope | Cleanup): void {
 		const scope = getCurrentScope();
 		if (scope === undefined) {
 			// No active scope: execute immediately to avoid dangling cleanup.
-			target();
+			const result = target();
+			if (isPromiseLike(result)) {
+				Promise.resolve(result).catch((error) => {
+					logUnhandledAsyncError("onUnmount cleanup", error);
+				});
+			}
 			return;
 		}
 

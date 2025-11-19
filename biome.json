@@ -13,6 +13,6 @@
 	},
 	"files": {
 		"include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.json"],
-		"ignore": ["packages/**/dist/**", "packages/**/coverage/**"]
+		"ignore": ["packages/**/dist/**", "**/coverage/**"]
 	}
 }

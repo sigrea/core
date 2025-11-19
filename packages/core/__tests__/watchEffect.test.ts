@@ -4,6 +4,7 @@ import { onMount } from "../../lifecycle/onMount";
 import { onUnmount } from "../../lifecycle/onUnmount";
 import { deepSignal } from "../deepSignal";
 import { nextTick } from "../nextTick";
+import type { Cleanup } from "../scope";
 import { signal } from "../signal";
 import { watchEffect } from "../watchEffect";
 
@@ -110,5 +111,59 @@ describe("watchEffect", () => {
 
 		stopPre();
 		stopPost();
+	});
+
+	it("can return a cleanup from an async effect", async () => {
+		const count = signal(0);
+		const events: string[] = [];
+
+		const stop = watchEffect(async () => {
+			events.push(`run-${count.value}`);
+			await Promise.resolve();
+			return () => {
+				events.push("cleanup");
+			};
+		});
+
+		await Promise.resolve();
+		expect(events).toEqual(["run-0"]);
+
+		count.value = 1;
+		await nextTick();
+		await Promise.resolve();
+		expect(events).toEqual(["run-0", "cleanup", "run-1"]);
+
+		stop();
+	});
+
+	it("runs async cleanup even if the effect is invalidated before it resolves", async () => {
+		const count = signal(0);
+		const events: string[] = [];
+		const pending: Array<() => void> = [];
+
+		const stop = watchEffect(() => {
+			const runId = count.value;
+			events.push(`run-${runId}`);
+			return new Promise<Cleanup>((resolve) => {
+				pending.push(() => {
+					resolve(() => {
+						events.push(`cleanup-${runId}`);
+					});
+				});
+			});
+		});
+
+		await Promise.resolve();
+		expect(events).toEqual(["run-0"]);
+
+		count.value = 1;
+		await nextTick();
+		expect(events).toEqual(["run-0", "run-1"]);
+
+		pending.shift()?.();
+		await Promise.resolve();
+		expect(events).toEqual(["run-0", "run-1", "cleanup-0"]);
+
+		stop();
 	});
 });

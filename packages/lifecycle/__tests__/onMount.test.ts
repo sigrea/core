@@ -45,4 +45,26 @@ describe("onMount", () => {
 
 		expect(events).toEqual(["parent-mount", "child-mount", "child-cleanup"]);
 	});
+
+	it("registers cleanup returned from an async callback", async () => {
+		const events: string[] = [];
+
+		const scope = onMount(async () => {
+			events.push("mount-start");
+			await Promise.resolve();
+			events.push("mount-resolved");
+			return () => {
+				events.push("cleanup");
+			};
+		});
+
+		expect(events).toEqual(["mount-start"]);
+
+		await Promise.resolve();
+		expect(events).toEqual(["mount-start", "mount-resolved"]);
+
+		await Promise.resolve();
+		onUnmount(scope);
+		expect(events).toEqual(["mount-start", "mount-resolved", "cleanup"]);
+	});
 });

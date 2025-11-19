@@ -23,8 +23,9 @@ import {
 	isDeepSignal,
 	trackDeepSignalVersion,
 } from "./deepSignal";
+import { isPromiseLike, logUnhandledAsyncError } from "./internal/async";
 import { schedulePostFlush, schedulePreFlush } from "./scheduler";
-import { getCurrentScope, registerScopeCleanup } from "./scope";
+import { type Cleanup, getCurrentScope, registerScopeCleanup } from "./scope";
 import type { Signal } from "./signal";
 
 export type WatchStopHandle = () => void;
@@ -99,9 +100,11 @@ export interface WatchOptions<Immediate = boolean> {
 
 export type WatchFlushType = "pre" | "post" | "sync";
 
-export type OnCleanup = (cleanupFn: () => void) => void;
+export type OnCleanup = (cleanupFn: Cleanup) => void;
 
-export type WatchEffect = (onCleanup: OnCleanup) => void;
+export type WatchEffect = (
+	onCleanup: OnCleanup,
+) => void | Cleanup | Promise<void | Cleanup>;
 
 type SingleWatchSource<T> =
 	| Signal<T>
@@ -141,9 +144,15 @@ export type WatchCallback<V = unknown, OV = unknown> = (
 	value: V,
 	oldValue: OV,
 	onCleanup: OnCleanup,
-) => unknown;
+) => void | Cleanup | Promise<void | Cleanup>;
 
 const INITIAL_WATCHER_VALUE: unknown = {};
+
+const NOOP_ON_CLEANUP: OnCleanup = () => {
+	if (process.env.NODE_ENV !== "production") {
+		console.warn("onCleanup() called with no active watch run.");
+	}
+};
 
 class Watcher {
 	private readonly effect: Effect<unknown>;
@@ -154,9 +163,11 @@ class Watcher {
 	private readonly isMultiSource: boolean;
 	private readonly isDeepSignalSource: boolean;
 	private hasDeepSignalArrayEntry = false;
-	private readonly registerCleanup: OnCleanup;
 	private detachFromScope: (() => void) | undefined;
-	private cleanup: (() => void) | undefined;
+	private cleanup: Cleanup | undefined;
+	private cleanupRunId = 0;
+	private activeCleanupRunId = 0;
+	private currentOnCleanup: OnCleanup = NOOP_ON_CLEANUP;
 	private oldValue: unknown;
 	private stopped = false;
 
@@ -199,10 +210,76 @@ class Watcher {
 				queuePreFlushJob(job, immediateFirstRun);
 			};
 		}
+	}
 
-		this.registerCleanup = (cleanupFn: () => void) => {
-			this.cleanup = cleanupFn;
+	private prepareCleanupContext(): {
+		context: number;
+		onCleanup: OnCleanup;
+	} {
+		this.cleanupRunId += 1;
+		const context = this.cleanupRunId;
+		this.activeCleanupRunId = context;
+		return {
+			context,
+			onCleanup: this.createOnCleanup(context),
 		};
+	}
+
+	private createOnCleanup(context: number): OnCleanup {
+		return (cleanupFn) => {
+			this.assignCleanup(cleanupFn, context);
+		};
+	}
+
+	private assignCleanup(cleanupFn: Cleanup, context: number): void {
+		if (this.stopped) {
+			this.invokeCleanup(cleanupFn, false);
+			return;
+		}
+		if (context !== this.activeCleanupRunId) {
+			if (context < this.activeCleanupRunId) {
+				this.invokeCleanup(cleanupFn, false);
+			}
+			return;
+		}
+		this.cleanup = cleanupFn;
+	}
+
+	private handleCallbackResult(
+		result: unknown,
+		context: number,
+		label: string,
+	): void {
+		if (typeof result === "function") {
+			this.assignCleanup(result as Cleanup, context);
+			return;
+		}
+
+		if (isPromiseLike(result)) {
+			Promise.resolve(result)
+				.then((resolved) => {
+					this.handleCallbackResult(resolved, context, label);
+				})
+				.catch((error) => {
+					logUnhandledAsyncError(label, error);
+				});
+		}
+	}
+
+	private invokeCleanup(cleanupFn: Cleanup, throwOnError: boolean): void {
+		try {
+			const result = cleanupFn();
+			if (isPromiseLike(result)) {
+				Promise.resolve(result).catch((error) => {
+					logUnhandledAsyncError("watch cleanup", error);
+				});
+			}
+		} catch (error) {
+			if (throwOnError) {
+				throw error;
+			}
+			logUnhandledAsyncError("watch cleanup", error);
+		}
 	}
 
 	initialize(immediate: boolean | undefined): void {
@@ -212,11 +289,17 @@ class Watcher {
 				return;
 			}
 
+			const { onCleanup } = this.prepareCleanupContext();
+			this.currentOnCleanup = onCleanup;
 			this.oldValue = this.effect.run();
+			this.currentOnCleanup = NOOP_ON_CLEANUP;
 			return;
 		}
 
+		const { onCleanup } = this.prepareCleanupContext();
+		this.currentOnCleanup = onCleanup;
 		this.effect.run();
+		this.currentOnCleanup = NOOP_ON_CLEANUP;
 	}
 
 	setScopeDetacher(detach: (() => void) | undefined): void {
@@ -228,6 +311,8 @@ class Watcher {
 			return;
 		}
 		this.stopped = true;
+		this.activeCleanupRunId = 0;
+		this.currentOnCleanup = NOOP_ON_CLEANUP;
 		this.detachFromScope?.();
 		this.detachFromScope = undefined;
 		this.runCleanup();
@@ -261,16 +346,24 @@ class Watcher {
 			}
 
 			if (changed) {
+				const { context, onCleanup } = this.prepareCleanupContext();
 				const formattedOldValue = this.normalizeOldValue();
 				this.runCleanup();
-				this.callback(newValue, formattedOldValue, this.registerCleanup);
+				const result = this.callback(newValue, formattedOldValue, onCleanup);
+				this.handleCallbackResult(result, context, "watch callback");
 				this.refreshOldValue(newValue);
 			}
 			return;
 		}
 
+		const { onCleanup } = this.prepareCleanupContext();
+		this.currentOnCleanup = onCleanup;
 		this.runCleanup();
-		this.effect.run();
+		try {
+			this.effect.run();
+		} finally {
+			this.currentOnCleanup = NOOP_ON_CLEANUP;
+		}
 	}
 
 	private createGetter(
@@ -323,7 +416,14 @@ class Watcher {
 
 			const effectSource = source as WatchEffect;
 			return {
-				getter: () => effectSource(this.registerCleanup),
+				getter: () => {
+					const result = effectSource(this.currentOnCleanup);
+					this.handleCallbackResult(
+						result,
+						this.activeCleanupRunId,
+						"watch effect",
+					);
+				},
 				isMultiSource: false,
 				isDeepSignalSource: false,
 			};
@@ -515,7 +615,7 @@ class Watcher {
 		}
 		const cleanupToRun = this.cleanup;
 		this.cleanup = undefined;
-		cleanupToRun();
+		this.invokeCleanup(cleanupToRun, true);
 	}
 
 	private traverse(
