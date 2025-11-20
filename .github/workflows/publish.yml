@@ -15,7 +15,7 @@ jobs:
     environment: release
     concurrency: publish-${{ github.ref }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v4
