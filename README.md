@@ -24,6 +24,7 @@ Sigrea extends [alien-signals](https://github.com/stackblitz/alien-signals) with
   - [Watching and Effects](#watching-and-effects)
   - [Scopes and Logic Lifecycles](#scopes-and-logic-lifecycles)
 - [Testing](#testing)
+- [Handling Scope Cleanup Errors](#handling-scope-cleanup-errors)
 - [Development](#development)
 - [License](#license)
 
@@ -293,6 +294,27 @@ it("increments and exposes derived state", () => {
   expect(counterLogic.doubled.value).toBe(22);
 });
 ```
+
+## Handling Scope Cleanup Errors
+
+When cleanup callbacks throw errors during scope disposal, Sigrea collects them into an `AggregateError`. Use `setScopeCleanupErrorHandler` to customize error handling and forward failures to monitoring services:
+
+```ts
+import { setScopeCleanupErrorHandler } from "@sigrea/core";
+
+setScopeCleanupErrorHandler((error, context) => {
+  console.error(`Cleanup failed:`, error);
+
+  // Forward to monitoring service
+  if (typeof Sentry !== "undefined") {
+    Sentry.captureException(error, {
+      tags: { scopeId: context.scopeId, phase: context.phase },
+    });
+  }
+});
+```
+
+The handler receives `error` (the thrown exception) and `context` (scope metadata including `scopeId`, `phase`, `index`, and `total`). Return `ScopeCleanupErrorResponse.Suppress` to prevent the error from being thrown, or `Propagate` to rethrow immediately for synchronous errors.
 
 ## Development
 
