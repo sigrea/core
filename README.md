@@ -101,7 +101,7 @@ console.log(counterLogic.count.value); // 1
 // logics/SearchLogic.ts
 export type Category = "all" | "kitchen" | "desk";
 
-export const SearchLogic = defineLogic(() => {
+export const SearchLogic = defineLogic()(() => {
   const query = signal("");
   const category = signal<Category>("all");
 
@@ -130,7 +130,7 @@ interface Product {
   category: Category;
 }
 
-export const ProductListLogic = defineLogic((_, { get }) => {
+export const ProductListLogic = defineLogic()((_, { get }) => {
   const searchLogic = get(SearchLogic);
 
   const products = deepSignal<Product[]>([
@@ -251,7 +251,7 @@ settings.locale.region = "US";
 Every logic factory owns a root `Scope`, and cleanup callbacks register automatically while it is active. `defineLogic` and `mountLogic` wrap this plumbing so you can mount instances, call `cleanupLogics()` in tests, and rely on consistent cleanup. `onMount` runs setup code when the logic mounts, while `onUnmount` registers cleanup callbacks to release intervals, sockets, or watchers when the logic unmounts.
 
 ```ts
-export const TimerLogic = defineLogic(() => {
+export const TimerLogic = defineLogic()(() => {
   const count = signal(0);
   let intervalId: ReturnType<typeof setInterval> | undefined;
 
