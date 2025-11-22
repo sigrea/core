@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.3.1
+
+[compare changes](https://github.com/sigrea/core/compare/v0.3.0...v0.3.1)
+
+### 📖 Documentation
+
+- Add scope cleanup error handling section to README ([#39](https://github.com/sigrea/core/pull/39))
+- Fix defineLogic syntax in README examples ([#40](https://github.com/sigrea/core/pull/40))
+
+### 🏡 Chore
+
+- **release:** V0.3.0 ([aae3343](https://github.com/sigrea/core/commit/aae3343))
+- **release:** V0.3.0 ([#37](https://github.com/sigrea/core/pull/37))
+
+### ❤️ Contributors
+
+- Aose ([@aose-yuu](https://github.com/aose-yuu))
+- Aose-yuu <aose.developer@gmail.com>
+
 ## v0.3.0
 
 [compare changes](https://github.com/sigrea/core/compare/591a7f8...v0.3.0)
