@@ -1,31 +1,14 @@
 <!-- Thank you for contributing to @sigrea/core! -->
 
-### 🔗 Linked issue
+## Purpose
+<!-- One sentence on what this PR solves. Add `Closes #123` if relevant. -->
 
-<!-- e.g. resolves #123 -->
+## Summary
+<!-- Scope touched and user impact. Note breaking changes or migration steps if any. -->
 
-### 📚 Description
-
-<!-- What & Why: describe the change and motivation -->
-
-### ⚠️ Breaking changes
-
-<!-- If any, describe the impact and migration notes; otherwise write N/A -->
-
-### 🧪 Test plan
-
-<!-- Describe how you tested the change. Include new/updated tests if applicable. -->
-
-### 📄 Docs
-
-<!-- If this change requires docs, link or describe the update; otherwise write N/A -->
-
-### ✅ Checklist
-
-- [ ] PR title follows Conventional Commits
-- [ ] `pnpm test` passes locally
-- [ ] `pnpm build` succeeds
-- [ ] `pnpm run format` passes
-- [ ] Changeset added if user-facing change (or N/A for chore/docs/tests)
-- [ ] Linked issue referenced and no duplicate PRs
-
+## Verification
+<!-- Quick checks run. If not run, say why. -->
+- [ ] `pnpm test`
+- [ ] `pnpm build`
+- [ ] `pnpm format`
+- [ ] CI PR format check passes (title/body rules)
