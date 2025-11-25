@@ -10,7 +10,7 @@ importers:
     dependencies:
       alien-signals:
         specifier: ^3.0.1
-        version: 3.0.1
+        version: 3.1.1
     devDependencies:
       '@biomejs/biome':
         specifier: 1.9.4
@@ -527,8 +527,8 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  alien-signals@3.0.1:
-    resolution: {integrity: sha512-ec02Wv5iOg7yG979PH9ykv5KN/KHznOxMlKy/Jr8lnBo3T94d4MUGo7FVdM8B2fM0e94twzEcWCyWzfIyeV19g==}
+  alien-signals@3.1.1:
+    resolution: {integrity: sha512-ogkIWbVrLwKtHY6oOAXaYkAxP+cTH7V5FZ5+Tm4NZFd8VDZ6uNMDrfzqctTZ42eTMCSR3ne3otpcxmqSnFfPYA==}
 
   ansi-regex@5.0.1:
     resolution: {integrity: sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==}
@@ -1922,7 +1922,7 @@ snapshots:
 
   acorn@8.15.0: {}
 
-  alien-signals@3.0.1: {}
+  alien-signals@3.1.1: {}
 
   ansi-regex@5.0.1: {}
 
