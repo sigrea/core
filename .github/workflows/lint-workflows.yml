@@ -15,4 +15,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: rhysd/actionlint@27b18e36cb83de403ebcb76579385c63ef964e38
+      - uses: rhysd/actionlint@7de1cc49de6e05d981ddc7d58a34a99e8d5b0950
