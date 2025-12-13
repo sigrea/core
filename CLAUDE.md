@@ -89,7 +89,7 @@ packages/
 6. **Molecule factories** (`packages/molecule/molecule.ts`)
    - `molecule<TProps>((props) => { ... })` pattern
    - Each molecule instance owns its own Scope; during setup execution, `use(ChildMolecule, props)` retrieves and links child molecule
-   - `mountMolecule()` / `useMolecule()` for mounting, `cleanupMolecule()` / `cleanupMolecules()` for post-test cleanup
+   - `mountMolecule()` for mounting, `cleanupMolecule()` / `cleanupMolecules()` for post-test cleanup
 
 ### Design Principles
 

@@ -2,12 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { onUnmount } from "../../lifecycle/onUnmount";
 import { molecule } from "../molecule";
-import {
-	cleanupMolecule,
-	cleanupMolecules,
-	mountMolecule,
-	useMolecule,
-} from "../testing";
+import { cleanupMolecule, cleanupMolecules, mountMolecule } from "../testing";
 
 afterEach(() => {
 	cleanupMolecules();
@@ -51,24 +46,6 @@ describe("molecule testing utilities", () => {
 		cleanupMolecules();
 
 		expect(cleanup).toHaveBeenCalledTimes(2);
-	});
-
-	it("useMolecule mounts and tracks an instance", () => {
-		const cleanup = vi.fn();
-
-		const DemoMolecule = molecule(() => {
-			onUnmount(() => {
-				cleanup();
-			});
-			return {};
-		});
-
-		const instance = useMolecule(DemoMolecule);
-
-		expect(instance).toBeTruthy();
-
-		cleanupMolecules();
-		expect(cleanup).toHaveBeenCalledTimes(1);
 	});
 
 	it("aggregates errors when cleanupMolecules encounters failures", () => {

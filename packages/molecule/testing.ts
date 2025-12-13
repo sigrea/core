@@ -23,13 +23,6 @@ export function mountMolecule<T extends object, P = void>(
 	return instance;
 }
 
-export function useMolecule<T extends object, P = void>(
-	molecule: MoleculeFactory<T, P>,
-	...args: MoleculeArgs<P>
-): MoleculeInstance<T> {
-	return mountMolecule(molecule, ...args);
-}
-
 export function cleanupMolecule<T extends object>(
 	instance: MoleculeInstance<T>,
 ): void {

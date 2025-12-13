@@ -18,7 +18,6 @@ import {
 	signal,
 	toValue,
 	use,
-	useMolecule,
 	watchEffect,
 } from "..";
 
@@ -91,12 +90,9 @@ describe("public exports", () => {
 			return {};
 		});
 
-		const instance = useMolecule(DemoMolecule);
+		const instance = mountMolecule(DemoMolecule);
 		expect(isMoleculeInstance(instance)).toBe(true);
 		expect(instance.count.value).toBe(1);
-
-		const mounted = mountMolecule(DemoMolecule);
-		expect(isMoleculeInstance(mounted)).toBe(true);
 
 		const parent = mountMolecule(ParentMolecule);
 		expect(isMoleculeInstance(parent)).toBe(true);

@@ -123,5 +123,4 @@ export {
 	cleanupMolecule,
 	cleanupMolecules,
 	mountMolecule,
-	useMolecule,
 } from "./molecule/testing";
