@@ -8,7 +8,7 @@ import { mountMolecule } from "../testing";
 
 describe("molecule internals", () => {
 	it("identifies molecule instances", () => {
-		const DemoMolecule = molecule()(() => ({}));
+		const DemoMolecule = molecule(() => ({}));
 		const instance = mountMolecule(DemoMolecule);
 
 		expect(isMoleculeInstance(instance)).toBe(true);
@@ -22,7 +22,7 @@ describe("molecule internals", () => {
 	it("disposes molecule and triggers registered cleanups", () => {
 		const cleanup = vi.fn();
 
-		const DemoMolecule = molecule()(() => {
+		const DemoMolecule = molecule(() => {
 			onUnmount(() => {
 				cleanup();
 			});

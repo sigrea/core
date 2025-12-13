@@ -6,6 +6,7 @@ import { onMount } from "../../lifecycle/onMount";
 import { onUnmount } from "../../lifecycle/onUnmount";
 import { molecule } from "../molecule";
 import { cleanupMolecule, cleanupMolecules, mountMolecule } from "../testing";
+import { use } from "../use";
 
 afterEach(() => {
 	cleanupMolecules();
@@ -13,7 +14,7 @@ afterEach(() => {
 
 describe("molecule", () => {
 	it("creates reusable molecule instances with reactive state", () => {
-		const CounterMolecule = molecule()(() => {
+		const CounterMolecule = molecule(() => {
 			const count = signal(0);
 			const doubled = computed(() => count.value * 2);
 			const increment = () => {
@@ -34,7 +35,7 @@ describe("molecule", () => {
 	});
 
 	it("passes props to the setup function", () => {
-		const CounterMolecule = molecule<{ initialCount: number }>()((props) => {
+		const CounterMolecule = molecule<{ initialCount: number }>((props) => {
 			const count = signal(props.initialCount);
 			return { count };
 		});
@@ -47,7 +48,7 @@ describe("molecule", () => {
 	it("runs onUnmount cleanups when molecule is disposed", () => {
 		const cleanup = vi.fn();
 
-		const DemoMolecule = molecule()(() => {
+		const DemoMolecule = molecule(() => {
 			onMount(() => {
 				return () => {
 					cleanup();
@@ -69,15 +70,15 @@ describe("molecule", () => {
 	it("disposes child molecule when the parent is cleaned up", () => {
 		const childCleanup = vi.fn();
 
-		const ChildMolecule = molecule()(() => {
+		const ChildMolecule = molecule(() => {
 			onUnmount(() => {
 				childCleanup();
 			});
 			return {};
 		});
 
-		const ParentMolecule = molecule()((_, { get }) => {
-			get(ChildMolecule);
+		const ParentMolecule = molecule(() => {
+			use(ChildMolecule);
 			return {};
 		});
 
@@ -91,7 +92,7 @@ describe("molecule", () => {
 	it("disposes scope when setup throws", () => {
 		const cleanup = vi.fn();
 
-		const DemoMolecule = molecule()(() => {
+		const DemoMolecule = molecule(() => {
 			onMount(() => {
 				return () => {
 					cleanup();
@@ -108,7 +109,7 @@ describe("molecule", () => {
 	it("cleanupMolecules tears down every tracked instance", () => {
 		const cleanup = vi.fn();
 
-		const DemoMolecule = molecule()(() => {
+		const DemoMolecule = molecule(() => {
 			onUnmount(() => {
 				cleanup();
 			});
@@ -123,18 +124,26 @@ describe("molecule", () => {
 		expect(cleanup).toHaveBeenCalledTimes(2);
 	});
 
-	it("passes props to child molecule instances via get", () => {
-		const ChildMolecule = molecule<{ id: number }>()((props) => {
+	it("passes props to child molecule instances via use", () => {
+		const ChildMolecule = molecule<{ id: number }>((props) => {
 			const identifier = signal(props.id);
 			return { identifier };
 		});
 
-		const ParentMolecule = molecule<{ childId: number }>()((props, { get }) => {
-			const child = get(ChildMolecule, { id: props.childId });
+		const ParentMolecule = molecule<{ childId: number }>((props) => {
+			const child = use(ChildMolecule, { id: props.childId });
 			return { child };
 		});
 
 		const parent = mountMolecule(ParentMolecule, { childId: 42 });
 		expect(parent.child.identifier.value).toBe(42);
+	});
+
+	it("throws when use is called outside molecule setup", () => {
+		const ChildMolecule = molecule(() => ({}));
+
+		expect(() => use(ChildMolecule)).toThrow(
+			"use(...) can only be called synchronously during molecule setup.",
+		);
 	});
 });

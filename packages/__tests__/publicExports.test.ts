@@ -17,6 +17,7 @@ import {
 	resumeTracking,
 	signal,
 	toValue,
+	use,
 	useMolecule,
 	watchEffect,
 } from "..";
@@ -68,13 +69,26 @@ describe("public exports", () => {
 
 	it("exposes molecule helpers from the package entry", () => {
 		const teardown = vi.fn();
+		const childTeardown = vi.fn();
 
-		const DemoMolecule = molecule()(() => {
+		const DemoMolecule = molecule(() => {
 			const count = signal(1);
 			onUnmount(() => {
 				teardown();
 			});
 			return { count };
+		});
+
+		const ChildMolecule = molecule(() => {
+			onUnmount(() => {
+				childTeardown();
+			});
+			return {};
+		});
+
+		const ParentMolecule = molecule(() => {
+			use(ChildMolecule);
+			return {};
 		});
 
 		const instance = useMolecule(DemoMolecule);
@@ -83,6 +97,12 @@ describe("public exports", () => {
 
 		const mounted = mountMolecule(DemoMolecule);
 		expect(isMoleculeInstance(mounted)).toBe(true);
+
+		const parent = mountMolecule(ParentMolecule);
+		expect(isMoleculeInstance(parent)).toBe(true);
+
+		cleanupMolecule(parent);
+		expect(childTeardown).toHaveBeenCalledTimes(1);
 
 		cleanupMolecule(instance);
 		expect(teardown).toHaveBeenCalledTimes(1);

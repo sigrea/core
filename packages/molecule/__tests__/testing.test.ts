@@ -20,7 +20,7 @@ describe("molecule testing utilities", () => {
 	it("cleanupMolecule tears down a mounted instance once", () => {
 		const cleanup = vi.fn();
 
-		const DemoMolecule = molecule()(() => {
+		const DemoMolecule = molecule(() => {
 			onUnmount(() => {
 				cleanup();
 			});
@@ -38,7 +38,7 @@ describe("molecule testing utilities", () => {
 	it("cleanupMolecules clears every tracked instance", () => {
 		const cleanup = vi.fn();
 
-		const DemoMolecule = molecule()(() => {
+		const DemoMolecule = molecule(() => {
 			onUnmount(() => {
 				cleanup();
 			});
@@ -56,7 +56,7 @@ describe("molecule testing utilities", () => {
 	it("useMolecule mounts and tracks an instance", () => {
 		const cleanup = vi.fn();
 
-		const DemoMolecule = molecule()(() => {
+		const DemoMolecule = molecule(() => {
 			onUnmount(() => {
 				cleanup();
 			});
@@ -78,7 +78,7 @@ describe("molecule testing utilities", () => {
 				throw new Error("cleanup failure");
 			});
 
-			const DemoMolecule = molecule()(() => {
+			const DemoMolecule = molecule(() => {
 				onUnmount(() => {
 					cleanup();
 					throw new Error("teardown failure");
