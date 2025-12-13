@@ -6,11 +6,7 @@ import {
 	popActiveMoleculeMetadata,
 	pushActiveMoleculeMetadata,
 } from "./internals";
-import type {
-	MoleculeArgs,
-	MoleculeFactory,
-	MoleculeInstance,
-} from "./types";
+import type { MoleculeArgs, MoleculeFactory, MoleculeInstance } from "./types";
 
 const INVALID_SETUP_RETURN_MESSAGE =
 	"molecule setup must return an object containing the public API.";

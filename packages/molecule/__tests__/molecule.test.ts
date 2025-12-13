@@ -35,7 +35,7 @@ describe("molecule", () => {
 	});
 
 	it("passes props to the setup function", () => {
-		const CounterMolecule = molecule<{ initialCount: number }>((props) => {
+		const CounterMolecule = molecule((props: { initialCount: number }) => {
 			const count = signal(props.initialCount);
 			return { count };
 		});
@@ -125,12 +125,12 @@ describe("molecule", () => {
 	});
 
 	it("passes props to child molecule instances via use", () => {
-		const ChildMolecule = molecule<{ id: number }>((props) => {
+		const ChildMolecule = molecule((props: { id: number }) => {
 			const identifier = signal(props.id);
 			return { identifier };
 		});
 
-		const ParentMolecule = molecule<{ childId: number }>((props) => {
+		const ParentMolecule = molecule((props: { childId: number }) => {
 			const child = use(ChildMolecule, { id: props.childId });
 			return { child };
 		});
