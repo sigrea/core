@@ -4,16 +4,16 @@ import { computed } from "../../core/computed";
 import { signal } from "../../core/signal";
 import { onMount } from "../../lifecycle/onMount";
 import { onUnmount } from "../../lifecycle/onUnmount";
-import { defineLogic } from "../defineLogic";
-import { cleanupLogic, cleanupLogics, mountLogic } from "../testing";
+import { molecule } from "../molecule";
+import { cleanupMolecule, cleanupMolecules, mountMolecule } from "../testing";
 
 afterEach(() => {
-	cleanupLogics();
+	cleanupMolecules();
 });
 
-describe("defineLogic", () => {
-	it("creates reusable logic instances with reactive state", () => {
-		const CounterLogic = defineLogic()(() => {
+describe("molecule", () => {
+	it("creates reusable molecule instances with reactive state", () => {
+		const CounterMolecule = molecule()(() => {
 			const count = signal(0);
 			const doubled = computed(() => count.value * 2);
 			const increment = () => {
@@ -23,7 +23,7 @@ describe("defineLogic", () => {
 			return { count, doubled, increment };
 		});
 
-		const counter = mountLogic(CounterLogic);
+		const counter = mountMolecule(CounterMolecule);
 
 		expect(counter.count.value).toBe(0);
 		expect(counter.doubled.value).toBe(0);
@@ -34,20 +34,20 @@ describe("defineLogic", () => {
 	});
 
 	it("passes props to the setup function", () => {
-		const Logic = defineLogic<{ initialCount: number }>()((props) => {
+		const CounterMolecule = molecule<{ initialCount: number }>()((props) => {
 			const count = signal(props.initialCount);
 			return { count };
 		});
 
-		const instance = mountLogic(Logic, { initialCount: 3 });
+		const instance = mountMolecule(CounterMolecule, { initialCount: 3 });
 
 		expect(instance.count.value).toBe(3);
 	});
 
-	it("runs onUnmount cleanups when logic is disposed", () => {
+	it("runs onUnmount cleanups when molecule is disposed", () => {
 		const cleanup = vi.fn();
 
-		const Logic = defineLogic()(() => {
+		const DemoMolecule = molecule()(() => {
 			onMount(() => {
 				return () => {
 					cleanup();
@@ -57,33 +57,33 @@ describe("defineLogic", () => {
 			return {};
 		});
 
-		const instance = mountLogic(Logic);
+		const instance = mountMolecule(DemoMolecule);
 
 		expect(cleanup).not.toHaveBeenCalled();
 
-		cleanupLogic(instance);
+		cleanupMolecule(instance);
 
 		expect(cleanup).toHaveBeenCalledTimes(1);
 	});
 
-	it("disposes child logic when the parent is cleaned up", () => {
+	it("disposes child molecule when the parent is cleaned up", () => {
 		const childCleanup = vi.fn();
 
-		const ChildLogic = defineLogic()(() => {
+		const ChildMolecule = molecule()(() => {
 			onUnmount(() => {
 				childCleanup();
 			});
 			return {};
 		});
 
-		const ParentLogic = defineLogic()((_, { get }) => {
-			get(ChildLogic);
+		const ParentMolecule = molecule()((_, { get }) => {
+			get(ChildMolecule);
 			return {};
 		});
 
-		const parent = mountLogic(ParentLogic);
+		const parent = mountMolecule(ParentMolecule);
 
-		cleanupLogic(parent);
+		cleanupMolecule(parent);
 
 		expect(childCleanup).toHaveBeenCalledTimes(1);
 	});
@@ -91,7 +91,7 @@ describe("defineLogic", () => {
 	it("disposes scope when setup throws", () => {
 		const cleanup = vi.fn();
 
-		const Logic = defineLogic()(() => {
+		const DemoMolecule = molecule()(() => {
 			onMount(() => {
 				return () => {
 					cleanup();
@@ -101,40 +101,40 @@ describe("defineLogic", () => {
 			throw new Error("boom");
 		});
 
-		expect(() => mountLogic(Logic)).toThrow("boom");
+		expect(() => mountMolecule(DemoMolecule)).toThrow("boom");
 		expect(cleanup).toHaveBeenCalledTimes(1);
 	});
 
-	it("cleanupLogics tears down every tracked instance", () => {
+	it("cleanupMolecules tears down every tracked instance", () => {
 		const cleanup = vi.fn();
 
-		const Logic = defineLogic()(() => {
+		const DemoMolecule = molecule()(() => {
 			onUnmount(() => {
 				cleanup();
 			});
 			return {};
 		});
 
-		mountLogic(Logic);
-		mountLogic(Logic);
+		mountMolecule(DemoMolecule);
+		mountMolecule(DemoMolecule);
 
-		cleanupLogics();
+		cleanupMolecules();
 
 		expect(cleanup).toHaveBeenCalledTimes(2);
 	});
 
-	it("passes props to child logic instances via get", () => {
-		const ChildLogic = defineLogic<{ id: number }>()((props) => {
+	it("passes props to child molecule instances via get", () => {
+		const ChildMolecule = molecule<{ id: number }>()((props) => {
 			const identifier = signal(props.id);
 			return { identifier };
 		});
 
-		const ParentLogic = defineLogic<{ childId: number }>()((props, { get }) => {
-			const child = get(ChildLogic, { id: props.childId });
+		const ParentMolecule = molecule<{ childId: number }>()((props, { get }) => {
+			const child = get(ChildMolecule, { id: props.childId });
 			return { child };
 		});
 
-		const parent = mountLogic(ParentLogic, { childId: 42 });
+		const parent = mountMolecule(ParentMolecule, { childId: 42 });
 		expect(parent.child.identifier.value).toBe(42);
 	});
 });

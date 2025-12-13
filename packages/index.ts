@@ -93,30 +93,35 @@ export { onUnmount } from "./lifecycle/onUnmount";
 
 /**
  * ==================================================
- * logic
+ * molecule
  * ==================================================
  */
 
-// defineLogic
-export { defineLogic } from "./logic/defineLogic";
+// molecule
+export { molecule } from "./molecule/molecule";
 export type {
-	LogicArgs,
-	LogicContext,
-	LogicFunction,
-	LogicInstance,
+	MoleculeArgs,
+	MoleculeContext,
+	MoleculeFactory,
+	MoleculeInstance,
 	IsAllOptional,
-} from "./logic/types";
+} from "./molecule/types";
 
 // handlers
 export {
 	createComputedHandler,
 	createDeepSignalHandler,
 	createSignalHandler,
-} from "./logic/handlers";
-export type { Snapshot, SnapshotHandler } from "./logic/handlers";
+} from "./molecule/handlers";
+export type { Snapshot, SnapshotHandler } from "./molecule/handlers";
 
 // instance
-export { isLogicInstance } from "./logic/instance";
+export { isMoleculeInstance } from "./molecule/instance";
 
 // testing utilities
-export { cleanupLogic, cleanupLogics, mountLogic } from "./logic/testing";
+export {
+	cleanupMolecule,
+	cleanupMolecules,
+	mountMolecule,
+	useMolecule,
+} from "./molecule/testing";

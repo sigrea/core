@@ -1,16 +1,16 @@
 import { type Scope, disposeScope, registerScopeCleanup } from "../core/scope";
 
-import type { LogicInstance } from "./types";
+import type { MoleculeInstance } from "./types";
 
-export interface LogicMetadata {
+export interface MoleculeMetadata {
 	target: object;
 	scope: Scope;
 	disposed: boolean;
-	parent?: LogicMetadata;
-	children: Set<LogicMetadata>;
+	parent?: MoleculeMetadata;
+	children: Set<MoleculeMetadata>;
 }
 
-const logicMetadataMap = new WeakMap<object, LogicMetadata>();
+const moleculeMetadataMap = new WeakMap<object, MoleculeMetadata>();
 
 function collectErrors(target: unknown, errors: unknown[]): void {
 	if (target instanceof AggregateError) {
@@ -22,7 +22,7 @@ function collectErrors(target: unknown, errors: unknown[]): void {
 	errors.push(target);
 }
 
-export function createMetadata(scope: Scope): LogicMetadata {
+export function createMetadata(scope: Scope): MoleculeMetadata {
 	return {
 		// Temporary placeholder; will be set in finalizeMetadata.
 		target: {} as object,
@@ -33,27 +33,29 @@ export function createMetadata(scope: Scope): LogicMetadata {
 }
 
 export function finalizeMetadata(
-	metadata: LogicMetadata,
+	metadata: MoleculeMetadata,
 	target: object,
 ): void {
 	metadata.target = target;
-	logicMetadataMap.set(target, metadata);
+	moleculeMetadataMap.set(target, metadata);
 }
 
-export function getLogicMetadata(value: unknown): LogicMetadata | undefined {
+export function getMoleculeMetadata(
+	value: unknown,
+): MoleculeMetadata | undefined {
 	if (typeof value !== "object" || value === null) {
 		return undefined;
 	}
-	return logicMetadataMap.get(value as object);
+	return moleculeMetadataMap.get(value as object);
 }
 
-export function disposeLogicInstance(metadata: LogicMetadata): void {
+export function disposeMoleculeInstance(metadata: MoleculeMetadata): void {
 	if (metadata.disposed) {
 		return;
 	}
 	metadata.disposed = true;
 
-	logicMetadataMap.delete(metadata.target);
+	moleculeMetadataMap.delete(metadata.target);
 
 	const children = Array.from(metadata.children);
 	metadata.children.clear();
@@ -61,7 +63,7 @@ export function disposeLogicInstance(metadata: LogicMetadata): void {
 
 	for (const child of children) {
 		try {
-			disposeLogicInstance(child);
+			disposeMoleculeInstance(child);
 		} catch (error) {
 			collectErrors(error, errors);
 		}
@@ -79,35 +81,37 @@ export function disposeLogicInstance(metadata: LogicMetadata): void {
 	}
 
 	if (errors.length > 0) {
-		throw new AggregateError(errors, "Failed to dispose logic instance.");
+		throw new AggregateError(errors, "Failed to dispose molecule instance.");
 	}
 }
 
-export function disposeLogic<T extends object>(value: LogicInstance<T>): void {
-	const metadata = getLogicMetadata(value);
+export function disposeMolecule<T extends object>(
+	value: MoleculeInstance<T>,
+): void {
+	const metadata = getMoleculeMetadata(value);
 	if (metadata !== undefined) {
-		disposeLogicInstance(metadata);
+		disposeMoleculeInstance(metadata);
 	}
 }
 
-export function linkChildLogic<T extends object>(
-	parent: LogicMetadata,
-	child: LogicMetadata,
-	instance: LogicInstance<T>,
-): LogicInstance<T> {
+export function linkChildMolecule<T extends object>(
+	parent: MoleculeMetadata,
+	child: MoleculeMetadata,
+	instance: MoleculeInstance<T>,
+): MoleculeInstance<T> {
 	if (child.disposed) {
 		throw new Error(
-			"Cannot link a disposed logic instance. Create a new instance instead.",
+			"Cannot link a disposed molecule instance. Create a new instance instead.",
 		);
 	}
 
 	if (child.parent === undefined) {
 		child.parent = parent;
 		parent.children.add(child);
-		registerScopeCleanup(() => disposeLogicInstance(child), parent.scope);
+		registerScopeCleanup(() => disposeMoleculeInstance(child), parent.scope);
 	} else if (child.parent !== parent) {
 		throw new Error(
-			"Logic instance is already linked to a different parent. Create a new instance for each parent logic.",
+			"Molecule instance is already linked to a different parent. Create a new instance for each parent molecule.",
 		);
 	}
 
