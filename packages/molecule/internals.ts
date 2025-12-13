@@ -11,6 +11,7 @@ export interface MoleculeMetadata {
 }
 
 const moleculeMetadataMap = new WeakMap<object, MoleculeMetadata>();
+const activeMetadataStack: MoleculeMetadata[] = [];
 
 function collectErrors(target: unknown, errors: unknown[]): void {
 	if (target instanceof AggregateError) {
@@ -116,4 +117,20 @@ export function linkChildMolecule<T extends object>(
 	}
 
 	return instance;
+}
+
+export function pushActiveMoleculeMetadata(metadata: MoleculeMetadata): void {
+	activeMetadataStack.push(metadata);
+}
+
+export function popActiveMoleculeMetadata(metadata: MoleculeMetadata): void {
+	const current = activeMetadataStack[activeMetadataStack.length - 1];
+	if (current !== metadata) {
+		throw new Error("Molecule setup stack is corrupted.");
+	}
+	activeMetadataStack.pop();
+}
+
+export function getActiveMoleculeMetadata(): MoleculeMetadata | undefined {
+	return activeMetadataStack[activeMetadataStack.length - 1];
 }

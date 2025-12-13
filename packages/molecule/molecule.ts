@@ -6,6 +6,8 @@ import {
 	finalizeMetadata,
 	getMoleculeMetadata,
 	linkChildMolecule,
+	popActiveMoleculeMetadata,
+	pushActiveMoleculeMetadata,
 } from "./internals";
 import type {
 	MoleculeArgs,
@@ -39,9 +41,14 @@ function createMoleculeFactory<TReturn extends object, TProps>(
 
 		try {
 			const moleculeInstance = runWithScope(scope, () => {
-				const context = createMoleculeContext(metadata);
-				const instance = ensureSetupResult(setup(props, context));
-				return instance;
+				pushActiveMoleculeMetadata(metadata);
+				try {
+					const context = createMoleculeContext(metadata);
+					const instance = ensureSetupResult(setup(props, context));
+					return instance;
+				} finally {
+					popActiveMoleculeMetadata(metadata);
+				}
 			});
 
 			finalizeMetadata(metadata, moleculeInstance as object);
