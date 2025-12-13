@@ -10,13 +10,6 @@ export type MoleculeArgs<TProps> = TProps extends void
 		? [props?: TProps]
 		: [props: TProps];
 
-export interface MoleculeContext {
-	get<TReturn extends object, TProps = void>(
-		molecule: MoleculeFactory<TReturn, TProps>,
-		...args: MoleculeArgs<TProps>
-	): MoleculeInstance<TReturn>;
-}
-
 export type IsAllOptional<T> = T extends Record<string, never>
 	? true
 	: keyof T extends never

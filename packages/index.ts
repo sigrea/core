@@ -102,7 +102,6 @@ export { molecule } from "./molecule/molecule";
 export { use } from "./molecule/use";
 export type {
 	MoleculeArgs,
-	MoleculeContext,
 	MoleculeFactory,
 	MoleculeInstance,
 	IsAllOptional,

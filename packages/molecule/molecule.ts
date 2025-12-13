@@ -1,38 +1,32 @@
 import { createScope, disposeScope, runWithScope } from "../core/scope";
 
 import {
-	type MoleculeMetadata,
 	createMetadata,
 	finalizeMetadata,
-	getMoleculeMetadata,
-	linkChildMolecule,
 	popActiveMoleculeMetadata,
 	pushActiveMoleculeMetadata,
 } from "./internals";
 import type {
 	MoleculeArgs,
-	MoleculeContext,
 	MoleculeFactory,
 	MoleculeInstance,
 } from "./types";
 
 const INVALID_SETUP_RETURN_MESSAGE =
 	"molecule setup must return an object containing the public API.";
-const INVALID_MOLECULE_FACTORY_MESSAGE =
-	"get(...) expects a molecule factory returned by molecule().";
 
 export function molecule<TProps = void>(): <TReturn extends object>(
-	setup: (props: TProps, context: MoleculeContext) => TReturn,
+	setup: (props: TProps) => TReturn,
 ) => MoleculeFactory<TReturn, TProps> {
 	return function moleculeWithSetup<TReturn extends object>(
-		setup: (props: TProps, context: MoleculeContext) => TReturn,
+		setup: (props: TProps) => TReturn,
 	): MoleculeFactory<TReturn, TProps> {
 		return createMoleculeFactory(setup);
 	};
 }
 
 function createMoleculeFactory<TReturn extends object, TProps>(
-	setup: (props: TProps, context: MoleculeContext) => TReturn,
+	setup: (props: TProps) => TReturn,
 ): MoleculeFactory<TReturn, TProps> {
 	return ((...args: MoleculeArgs<TProps>) => {
 		const props = resolveProps(args);
@@ -43,8 +37,7 @@ function createMoleculeFactory<TReturn extends object, TProps>(
 			const moleculeInstance = runWithScope(scope, () => {
 				pushActiveMoleculeMetadata(metadata);
 				try {
-					const context = createMoleculeContext(metadata);
-					const instance = ensureSetupResult(setup(props, context));
+					const instance = ensureSetupResult(setup(props));
 					return instance;
 				} finally {
 					popActiveMoleculeMetadata(metadata);
@@ -71,28 +64,6 @@ function createMoleculeFactory<TReturn extends object, TProps>(
 			throw error;
 		}
 	}) as MoleculeFactory<TReturn, TProps>;
-}
-
-function createMoleculeContext(metadata: MoleculeMetadata): MoleculeContext {
-	return {
-		get<TReturn extends object, TProps = void>(
-			childFactory: MoleculeFactory<TReturn, TProps>,
-			...childArgs: MoleculeArgs<TProps>
-		): MoleculeInstance<TReturn> {
-			if (typeof childFactory !== "function") {
-				throw new TypeError(INVALID_MOLECULE_FACTORY_MESSAGE);
-			}
-
-			const child = childFactory(...childArgs);
-			const childMetadata = getMoleculeMetadata(child);
-
-			if (childMetadata === undefined) {
-				throw new TypeError(INVALID_MOLECULE_FACTORY_MESSAGE);
-			}
-
-			return linkChildMolecule(metadata, childMetadata, child);
-		},
-	};
 }
 
 function resolveProps<TProps>(args: MoleculeArgs<TProps>): TProps {
