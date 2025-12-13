@@ -62,7 +62,7 @@ interface CounterProps {
   initialCount: number;
 }
 
-export const CounterMolecule = molecule<CounterProps>()((props) => {
+export const CounterMolecule = molecule<CounterProps>((props) => {
   const count = signal(props.initialCount);
   const doubled = computed(() => count.value * 2);
 
@@ -101,7 +101,7 @@ console.log(counterMolecule.count.value); // 1
 // molecules/SearchMolecule.ts
 export type Category = "all" | "kitchen" | "desk";
 
-export const SearchMolecule = molecule()(() => {
+export const SearchMolecule = molecule(() => {
   const query = signal("");
   const category = signal<Category>("all");
 
@@ -122,6 +122,7 @@ export const SearchMolecule = molecule()(() => {
 });
 
 // molecules/ProductListMolecule.ts
+import { use } from "@sigrea/core";
 import { SearchMolecule, type Category } from "./SearchMolecule";
 
 interface Product {
@@ -130,8 +131,8 @@ interface Product {
   category: Category;
 }
 
-export const ProductListMolecule = molecule()((_, { get }) => {
-  const searchMolecule = get(SearchMolecule);
+export const ProductListMolecule = molecule(() => {
+  const searchMolecule = use(SearchMolecule);
 
   const products = deepSignal<Product[]>([
     { id: "1", name: "Coffee Mug", category: "kitchen" },
@@ -251,7 +252,7 @@ settings.locale.region = "US";
 Every molecule factory owns a root `Scope`, and cleanup callbacks register automatically while it is active. `molecule` and `mountMolecule` wrap this plumbing so you can mount instances, call `cleanupMolecules()` in tests, and rely on consistent cleanup. `onMount` runs setup code when the molecule mounts, while `onUnmount` registers cleanup callbacks to release intervals, sockets, or watchers when the molecule unmounts.
 
 ```ts
-export const TimerMolecule = molecule()(() => {
+export const TimerMolecule = molecule(() => {
   const count = signal(0);
   let intervalId: ReturnType<typeof setInterval> | undefined;
 
