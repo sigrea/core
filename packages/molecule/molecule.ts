@@ -15,14 +15,10 @@ import type {
 const INVALID_SETUP_RETURN_MESSAGE =
 	"molecule setup must return an object containing the public API.";
 
-export function molecule<TProps = void>(): <TReturn extends object>(
+export function molecule<TProps = void, TReturn extends object = object>(
 	setup: (props: TProps) => TReturn,
-) => MoleculeFactory<TReturn, TProps> {
-	return function moleculeWithSetup<TReturn extends object>(
-		setup: (props: TProps) => TReturn,
-	): MoleculeFactory<TReturn, TProps> {
-		return createMoleculeFactory(setup);
-	};
+): MoleculeFactory<TReturn, TProps> {
+	return createMoleculeFactory(setup);
 }
 
 function createMoleculeFactory<TReturn extends object, TProps>(
