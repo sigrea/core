@@ -50,7 +50,7 @@ packages/
       handlers/        # base, array, collection, readonly, shallow, mutable
     __tests__/
   lifecycle/           # onMount, onUnmount hooks
-  logic/               # defineLogic, mountLogic, cleanupLogics
+  molecule/             # molecule factory, mountMolecule, cleanupMolecules
   __tests__/           # Cross-package tests
   index.ts             # Single entry point
 ```
@@ -64,7 +64,7 @@ packages/
    - `batch()` and `flush()` provide queue-driven scheduling
 
 2. **Proxy handlers** (`packages/core/reactivity/handlers/`)
-   - `base.ts`: Base handler containing common `track()`/`trigger()` logic
+   - `base.ts`: Base handler containing common `track()`/`trigger()` plumbing
    - `array.ts`: Intercepts array operations (push, pop, length, etc.) and adds INTEGER_KEY and length tracking
    - `collection.ts`: Intercepts Map, Set, WeakMap, WeakSet using dedicated `ITERATE_KEY`/`MAP_KEY_ITERATE_KEY`
    - `readonly.ts`, `shallow.ts`, `mutable.ts`: Customize readonly, shallow, and mutable behaviors respectively
@@ -86,14 +86,14 @@ packages/
    - `createScope()`, `runWithScope()`, `disposeScope()` control effect and watcher lifecycles
    - `registerScopeCleanup(fn)` for automatic cleanup registration
 
-6. **Logic factories** (`packages/logic/defineLogic.ts`)
-   - `defineLogic<TProps>()((props, context) => { ... })` pattern
-   - Each logic instance owns its own Scope; during setup execution, `context.get(ChildLogic, props)` retrieves and links child logic
-   - `mountLogic()` for manual mounting, `cleanupLogic()` / `cleanupLogics()` for post-test cleanup
+6. **Molecule factories** (`packages/molecule/molecule.ts`)
+   - `molecule<TProps>()((props, context) => { ... })` pattern
+   - Each molecule instance owns its own Scope; during setup execution, `context.get(ChildMolecule, props)` retrieves and links child molecule
+   - `mountMolecule()` / `useMolecule()` for mounting, `cleanupMolecule()` / `cleanupMolecules()` for post-test cleanup
 
 ### Design Principles
 
-- **Delegation to alien-signals**: Low-level scheduling and dependency tracking are delegated to alien-signals; Sigrea focuses on proxy handlers, scope management, and logic factories
+- **Delegation to alien-signals**: Low-level scheduling and dependency tracking are delegated to alien-signals; Sigrea focuses on proxy handlers, scope management, and molecule factories
 - **Handler integration**: Integrates track/trigger calls into proxy handlers; deepSignal detects nested object and collection changes with fine granularity
 - **Vue-style lifecycle**: `onMount`/`onUnmount` are implemented based on Scope, independent of host renderer
 - **Single entry point**: `packages/index.ts` consolidates all exports, generating dual CJS/ESM bundles
@@ -101,15 +101,15 @@ packages/
 ## Coding Conventions
 
 - **ES modules**: All `.ts` files with 2-space indentation, Biome applied
-- **Naming**: Runtime uses camelCase, types/classes use PascalCase, factory functions use `defineXxx` prefix
+- **Naming**: Runtime uses camelCase, types/classes use PascalCase, molecule factories use `molecule()`
 - **Lifecycle utilities**: Unify with `onMount`, `onUnmount` naming for searchability
 - **Test placement**: Cross-package in `packages/__tests__/*.test.ts`, unit tests adjacent to modules as `*.spec.ts`
-- **Cleanup**: Always set `afterEach(() => cleanupLogics())` in tests
+- **Cleanup**: Always set `afterEach(() => cleanupMolecules())` in tests
 
 ## Testing Guidelines
 
-- Use `mountLogic(LogicFactory, props)` to reproduce actual lifecycles
-- Call `cleanupLogics()` in `afterEach()` to reset hidden subscriptions
+- Use `mountMolecule(MoleculeFactory, props)` to reproduce actual lifecycles
+- Call `cleanupMolecules()` in `afterEach()` to reset hidden subscriptions
 - Add happy path + failure path for each feature
 - Verify coverage with `pnpm test:coverage`
 
