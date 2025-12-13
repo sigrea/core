@@ -1,20 +1,31 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+	cleanupMolecule,
+	cleanupMolecules,
 	computed,
 	deepSignal,
 	isComputed,
 	isDeepSignal,
+	isMoleculeInstance,
 	isSignal,
+	molecule,
+	mountMolecule,
 	nextTick,
+	onUnmount,
 	pauseTracking,
 	resumeTracking,
 	signal,
 	toValue,
+	useMolecule,
 	watchEffect,
 } from "..";
 
 describe("public exports", () => {
+	afterEach(() => {
+		cleanupMolecules();
+	});
+
 	it("exposes isSignal() and toValue() from the package entry", () => {
 		const count = signal(1);
 		const getter = () => 5;
@@ -53,5 +64,27 @@ describe("public exports", () => {
 		await nextTick();
 		expect(runs).toBe(1);
 		stop();
+	});
+
+	it("exposes molecule helpers from the package entry", () => {
+		const teardown = vi.fn();
+
+		const DemoMolecule = molecule()(() => {
+			const count = signal(1);
+			onUnmount(() => {
+				teardown();
+			});
+			return { count };
+		});
+
+		const instance = useMolecule(DemoMolecule);
+		expect(isMoleculeInstance(instance)).toBe(true);
+		expect(instance.count.value).toBe(1);
+
+		const mounted = mountMolecule(DemoMolecule);
+		expect(isMoleculeInstance(mounted)).toBe(true);
+
+		cleanupMolecule(instance);
+		expect(teardown).toHaveBeenCalledTimes(1);
 	});
 });
