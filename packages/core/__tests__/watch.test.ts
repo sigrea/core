@@ -545,6 +545,33 @@ describe("watch", () => {
 		stop();
 	});
 
+	it("watches readonly signal sources", async () => {
+		const source = signal(0);
+		const state = readonly(source);
+		const seen: Array<[number | undefined, number | undefined]> = [];
+
+		const stop = watch(
+			state,
+			(value, oldValue) => {
+				seen.push([value, oldValue]);
+			},
+			{ immediate: true },
+		);
+
+		source.value = 1;
+		await nextTick();
+		source.value = 2;
+		await nextTick();
+
+		expect(seen).toEqual([
+			[0, undefined],
+			[1, 0],
+			[2, 1],
+		]);
+
+		stop();
+	});
+
 	it("watches readonly deep signal sources", async () => {
 		const source = deepSignal({ nested: { count: 0 } });
 		const state = readonly(source);

@@ -24,6 +24,7 @@ import {
 	trackDeepSignalVersion,
 } from "./deepSignal";
 import { isPromiseLike, logUnhandledAsyncError } from "./internal/async";
+import type { ReadonlySignal } from "./readonly";
 import { schedulePostFlush, schedulePreFlush } from "./scheduler";
 import { type Cleanup, getCurrentScope, registerScopeCleanup } from "./scope";
 import type { Signal } from "./signal";
@@ -108,6 +109,7 @@ export type WatchEffect = (
 
 type SingleWatchSource<T> =
 	| Signal<T>
+	| ReadonlySignal<T>
 	| Computed<T>
 	| (() => T)
 	| (T extends object ? DeepSignal<T> | ReadonlyDeepSignal<T> : never);
@@ -125,13 +127,17 @@ type AnyWatchSource =
 
 type UnwrapWatchSource<S> = S extends Signal<infer V>
 	? V
-	: S extends Computed<infer V>
+	: S extends ReadonlySignal<infer V>
 		? V
-		: S extends () => infer V
+		: S extends Computed<infer V>
 			? V
-			: S extends DeepSignal<infer V>
+			: S extends () => infer V
 				? V
-				: S;
+				: S extends DeepSignal<infer V>
+					? V
+					: S extends ReadonlyDeepSignal<infer V>
+						? V
+						: S;
 
 type WatchSourceValues<Sources extends readonly AnyWatchSource[]> = {
 	[K in keyof Sources]: UnwrapWatchSource<Sources[K]>;
