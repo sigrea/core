@@ -6,11 +6,11 @@ import { onMount } from "../../lifecycle/onMount";
 import { onUnmount } from "../../lifecycle/onUnmount";
 import { disposeMolecule } from "../internals";
 import { molecule } from "../molecule";
-import { cleanupTrackedMolecules, trackMolecule } from "../testing";
+import { disposeTrackedMolecules, trackMolecule } from "../testing";
 import { use } from "../use";
 
 afterEach(() => {
-	cleanupTrackedMolecules();
+	disposeTrackedMolecules();
 });
 
 describe("molecule", () => {
@@ -111,7 +111,7 @@ describe("molecule", () => {
 		expect(cleanup).toHaveBeenCalledTimes(1);
 	});
 
-	it("cleanupTrackedMolecules tears down every tracked instance", () => {
+	it("disposeTrackedMolecules tears down every tracked instance", () => {
 		const cleanup = vi.fn();
 
 		const DemoMolecule = molecule(() => {
@@ -124,7 +124,7 @@ describe("molecule", () => {
 		trackMolecule(DemoMolecule());
 		trackMolecule(DemoMolecule());
 
-		cleanupTrackedMolecules();
+		disposeTrackedMolecules();
 
 		expect(cleanup).toHaveBeenCalledTimes(2);
 	});

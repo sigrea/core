@@ -12,7 +12,7 @@ It provides core primitives to build hooks, plus optional lifecycles for ownersh
 - **Lifecycles.** `Scope`, `onMount`, and `onUnmount` for cleanup boundaries.
 - **Molecules.** `molecule()` is a UI-less lifecycle container (not "all your logic").
 - **Composition.** Build molecule trees via `use()`.
-- **Testing.** `trackMolecule` + `cleanupTrackedMolecules` helps reproduce lifecycles in tests.
+- **Testing.** `trackMolecule` + `disposeTrackedMolecules` helps reproduce lifecycles in tests.
 
 ## Table of Contents
 
@@ -204,14 +204,14 @@ Notes:
 import { afterEach, expect, it } from "vitest";
 
 import {
-  cleanupTrackedMolecules,
+  disposeTrackedMolecules,
   molecule,
   readonly,
   signal,
   trackMolecule,
 } from "@sigrea/core";
 
-afterEach(() => cleanupTrackedMolecules());
+afterEach(() => disposeTrackedMolecules());
 
 it("increments and exposes derived state", () => {
   const CounterMolecule = molecule(() => {

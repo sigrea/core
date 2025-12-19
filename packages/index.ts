@@ -122,4 +122,4 @@ export { isMoleculeInstance } from "./molecule/instance";
 export { disposeMolecule } from "./molecule/internals";
 
 // test utilities
-export { trackMolecule, cleanupTrackedMolecules } from "./molecule/testing";
+export { trackMolecule, disposeTrackedMolecules } from "./molecule/testing";

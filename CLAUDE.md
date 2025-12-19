@@ -50,7 +50,7 @@ packages/
       handlers/        # base, array, collection, readonly, shallow, mutable
     __tests__/
   lifecycle/           # onMount, onUnmount hooks
-  molecule/             # molecule factory, disposeMolecule, trackMolecule, cleanupTrackedMolecules
+  molecule/             # molecule factory, disposeMolecule, trackMolecule, disposeTrackedMolecules
   __tests__/           # Cross-package tests
   index.ts             # Single entry point
 ```
@@ -89,7 +89,7 @@ packages/
 6. **Molecule factories** (`packages/molecule/molecule.ts`)
    - `molecule<TProps>((props) => { ... })` pattern
    - Each molecule instance owns its own Scope; during setup execution, `use(ChildMolecule, props)` retrieves and links child molecule
-   - `disposeMolecule()` for cleanup, `trackMolecule()` / `cleanupTrackedMolecules()` for test tracking
+   - `disposeMolecule()` for cleanup, `trackMolecule()` / `disposeTrackedMolecules()` for test tracking
 
 ### Design Principles
 
@@ -104,12 +104,12 @@ packages/
 - **Naming**: Runtime uses camelCase, types/classes use PascalCase, molecule factories use `molecule()`
 - **Lifecycle utilities**: Unify with `onMount`, `onUnmount` naming for searchability
 - **Test placement**: Cross-package in `packages/__tests__/*.test.ts`, unit tests adjacent to modules as `*.spec.ts`
-- **Cleanup**: Always set `afterEach(() => cleanupTrackedMolecules())` in tests
+- **Cleanup**: Always set `afterEach(() => disposeTrackedMolecules())` in tests
 
 ## Testing Guidelines
 
 - Create molecule instances with `const instance = MyMolecule()` and track with `trackMolecule(instance)`
-- Call `cleanupTrackedMolecules()` in `afterEach()` to reset hidden subscriptions
+- Call `disposeTrackedMolecules()` in `afterEach()` to reset hidden subscriptions
 - For non-tracked cleanup, use `disposeMolecule(instance)` directly
 - Add happy path + failure path for each feature
 - Verify coverage with `pnpm test:coverage`

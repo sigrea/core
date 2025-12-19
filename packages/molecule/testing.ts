@@ -23,7 +23,7 @@ export function trackMolecule<T extends object>(
 	tracked.add(instance as MoleculeInstance<object>);
 }
 
-export function cleanupTrackedMolecules(): void {
+export function disposeTrackedMolecules(): void {
 	const errors: unknown[] = [];
 
 	for (const instance of tracked) {
@@ -38,7 +38,7 @@ export function cleanupTrackedMolecules(): void {
 	if (errors.length > 0) {
 		throw new AggregateError(
 			errors,
-			"Failed to cleanup tracked molecule instances.",
+			"Failed to dispose tracked molecule instances.",
 		);
 	}
 }

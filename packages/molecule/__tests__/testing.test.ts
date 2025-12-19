@@ -3,11 +3,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { onUnmount } from "../../lifecycle/onUnmount";
 import { disposeMolecule } from "../internals";
 import { molecule } from "../molecule";
-import { cleanupTrackedMolecules, trackMolecule } from "../testing";
+import { disposeTrackedMolecules, trackMolecule } from "../testing";
 import type { MoleculeInstance } from "../types";
 
 afterEach(() => {
-	cleanupTrackedMolecules();
+	disposeTrackedMolecules();
 });
 
 describe("molecule testing utilities", () => {
@@ -26,7 +26,7 @@ describe("molecule testing utilities", () => {
 
 		const instance = DemoMolecule();
 		trackMolecule(instance);
-		cleanupTrackedMolecules();
+		disposeTrackedMolecules();
 
 		expect(cleanup).toHaveBeenCalledTimes(1);
 	});
@@ -55,7 +55,7 @@ describe("molecule testing utilities", () => {
 		expect(cleanup).toHaveBeenCalledTimes(1);
 	});
 
-	it("cleanupTrackedMolecules clears every tracked instance", () => {
+	it("disposeTrackedMolecules clears every tracked instance", () => {
 		const cleanup = vi.fn();
 
 		const DemoMolecule = molecule(() => {
@@ -68,12 +68,12 @@ describe("molecule testing utilities", () => {
 		trackMolecule(DemoMolecule());
 		trackMolecule(DemoMolecule());
 
-		cleanupTrackedMolecules();
+		disposeTrackedMolecules();
 
 		expect(cleanup).toHaveBeenCalledTimes(2);
 	});
 
-	it("aggregates errors when cleanupTrackedMolecules encounters failures", () => {
+	it("aggregates errors when disposeTrackedMolecules encounters failures", () => {
 		const errorSpy = suppressConsoleError();
 		try {
 			const cleanup = vi.fn(() => {
@@ -93,7 +93,7 @@ describe("molecule testing utilities", () => {
 
 			let caught: unknown;
 			try {
-				cleanupTrackedMolecules();
+				disposeTrackedMolecules();
 			} catch (error) {
 				caught = error;
 			}

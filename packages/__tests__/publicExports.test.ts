@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-	cleanupTrackedMolecules,
 	computed,
 	deepSignal,
 	disposeMolecule,
+	disposeTrackedMolecules,
 	isComputed,
 	isDeepSignal,
 	isMoleculeInstance,
@@ -23,7 +23,7 @@ import {
 
 describe("public exports", () => {
 	afterEach(() => {
-		cleanupTrackedMolecules();
+		disposeTrackedMolecules();
 	});
 
 	it("exposes isSignal() and toValue() from the package entry", () => {
