@@ -7,9 +7,10 @@
 <!-- Scope touched and user impact. Note breaking changes or migration steps if any. -->
 
 ## Verification
-<!-- Quick checks run. If not run, say why. -->
-- [ ] `pnpm test`
-- [ ] `pnpm typecheck`
-- [ ] `pnpm build`
-- [ ] `pnpm format`
-- [ ] CI PR title check passes (Conventional Commits)
+<!--
+Quick checks run. If not run, say why.
+
+CI also validates PR title via semantic-pr.yml (Conventional Commits).
+-->
+- [ ] `mise run ci`
+- [ ] `mise run notes` (for release-related changes)
