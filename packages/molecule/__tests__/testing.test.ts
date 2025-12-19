@@ -1,18 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { onUnmount } from "../../lifecycle/onUnmount";
+import { disposeMolecule } from "../internals";
 import { molecule } from "../molecule";
-import { cleanupMolecule, cleanupMolecules, mountMolecule } from "../testing";
+import { cleanupTrackedMolecules, trackMolecule } from "../testing";
+import type { MoleculeInstance } from "../types";
 
 afterEach(() => {
-	cleanupMolecules();
+	cleanupTrackedMolecules();
 });
 
 describe("molecule testing utilities", () => {
 	const suppressConsoleError = () =>
 		vi.spyOn(console, "error").mockImplementation(() => {});
 
-	it("cleanupMolecule tears down a mounted instance once", () => {
+	it("trackMolecule adds instance to tracked set", () => {
 		const cleanup = vi.fn();
 
 		const DemoMolecule = molecule(() => {
@@ -22,15 +24,20 @@ describe("molecule testing utilities", () => {
 			return {};
 		});
 
-		const instance = mountMolecule(DemoMolecule);
-
-		cleanupMolecule(instance);
-		cleanupMolecule(instance);
+		const instance = DemoMolecule();
+		trackMolecule(instance);
+		cleanupTrackedMolecules();
 
 		expect(cleanup).toHaveBeenCalledTimes(1);
 	});
 
-	it("cleanupMolecules clears every tracked instance", () => {
+	it("trackMolecule ignores non-molecule instances", () => {
+		expect(() =>
+			trackMolecule({} as unknown as MoleculeInstance<object>),
+		).not.toThrow();
+	});
+
+	it("disposeMolecule tears down a molecule instance once", () => {
 		const cleanup = vi.fn();
 
 		const DemoMolecule = molecule(() => {
@@ -40,15 +47,33 @@ describe("molecule testing utilities", () => {
 			return {};
 		});
 
-		mountMolecule(DemoMolecule);
-		mountMolecule(DemoMolecule);
+		const instance = DemoMolecule();
 
-		cleanupMolecules();
+		disposeMolecule(instance);
+		disposeMolecule(instance);
+
+		expect(cleanup).toHaveBeenCalledTimes(1);
+	});
+
+	it("cleanupTrackedMolecules clears every tracked instance", () => {
+		const cleanup = vi.fn();
+
+		const DemoMolecule = molecule(() => {
+			onUnmount(() => {
+				cleanup();
+			});
+			return {};
+		});
+
+		trackMolecule(DemoMolecule());
+		trackMolecule(DemoMolecule());
+
+		cleanupTrackedMolecules();
 
 		expect(cleanup).toHaveBeenCalledTimes(2);
 	});
 
-	it("aggregates errors when cleanupMolecules encounters failures", () => {
+	it("aggregates errors when cleanupTrackedMolecules encounters failures", () => {
 		const errorSpy = suppressConsoleError();
 		try {
 			const cleanup = vi.fn(() => {
@@ -63,12 +88,12 @@ describe("molecule testing utilities", () => {
 				return {};
 			});
 
-			mountMolecule(DemoMolecule);
-			mountMolecule(DemoMolecule);
+			trackMolecule(DemoMolecule());
+			trackMolecule(DemoMolecule());
 
 			let caught: unknown;
 			try {
-				cleanupMolecules();
+				cleanupTrackedMolecules();
 			} catch (error) {
 				caught = error;
 			}

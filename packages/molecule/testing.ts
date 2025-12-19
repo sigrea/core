@@ -1,6 +1,6 @@
 import { isMoleculeInstance } from "./instance";
 import { disposeMolecule } from "./internals";
-import type { MoleculeArgs, MoleculeFactory, MoleculeInstance } from "./types";
+import type { MoleculeInstance } from "./types";
 
 const tracked = new Set<MoleculeInstance<object>>();
 
@@ -14,26 +14,16 @@ function collectErrors(target: unknown, errors: unknown[]): void {
 	errors.push(target);
 }
 
-export function mountMolecule<T extends object, P = void>(
-	molecule: MoleculeFactory<T, P>,
-	...args: MoleculeArgs<P>
-): MoleculeInstance<T> {
-	const instance = molecule(...args);
-	tracked.add(instance as MoleculeInstance<object>);
-	return instance;
-}
-
-export function cleanupMolecule<T extends object>(
+export function trackMolecule<T extends object>(
 	instance: MoleculeInstance<T>,
 ): void {
 	if (!isMoleculeInstance(instance)) {
 		return;
 	}
-	disposeMolecule(instance);
-	tracked.delete(instance as MoleculeInstance<object>);
+	tracked.add(instance as MoleculeInstance<object>);
 }
 
-export function cleanupMolecules(): void {
+export function cleanupTrackedMolecules(): void {
 	const errors: unknown[] = [];
 
 	for (const instance of tracked) {

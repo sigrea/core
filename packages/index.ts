@@ -118,9 +118,8 @@ export type { Snapshot, SnapshotHandler } from "./molecule/handlers";
 // instance
 export { isMoleculeInstance } from "./molecule/instance";
 
-// testing utilities
-export {
-	cleanupMolecule,
-	cleanupMolecules,
-	mountMolecule,
-} from "./molecule/testing";
+// runtime API
+export { disposeMolecule } from "./molecule/internals";
+
+// test utilities
+export { trackMolecule, cleanupTrackedMolecules } from "./molecule/testing";

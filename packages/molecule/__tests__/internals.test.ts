@@ -4,12 +4,11 @@ import { onUnmount } from "../../lifecycle/onUnmount";
 import { isMoleculeInstance } from "../instance";
 import { disposeMolecule } from "../internals";
 import { molecule } from "../molecule";
-import { mountMolecule } from "../testing";
 
 describe("molecule internals", () => {
 	it("identifies molecule instances", () => {
 		const DemoMolecule = molecule(() => ({}));
-		const instance = mountMolecule(DemoMolecule);
+		const instance = DemoMolecule();
 
 		expect(isMoleculeInstance(instance)).toBe(true);
 		expect(isMoleculeInstance({})).toBe(false);
@@ -29,7 +28,7 @@ describe("molecule internals", () => {
 			return {};
 		});
 
-		const instance = mountMolecule(DemoMolecule);
+		const instance = DemoMolecule();
 
 		disposeMolecule(instance);
 		disposeMolecule(instance);

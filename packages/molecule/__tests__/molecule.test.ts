@@ -4,12 +4,13 @@ import { computed } from "../../core/computed";
 import { signal } from "../../core/signal";
 import { onMount } from "../../lifecycle/onMount";
 import { onUnmount } from "../../lifecycle/onUnmount";
+import { disposeMolecule } from "../internals";
 import { molecule } from "../molecule";
-import { cleanupMolecule, cleanupMolecules, mountMolecule } from "../testing";
+import { cleanupTrackedMolecules, trackMolecule } from "../testing";
 import { use } from "../use";
 
 afterEach(() => {
-	cleanupMolecules();
+	cleanupTrackedMolecules();
 });
 
 describe("molecule", () => {
@@ -24,7 +25,8 @@ describe("molecule", () => {
 			return { count, doubled, increment };
 		});
 
-		const counter = mountMolecule(CounterMolecule);
+		const counter = CounterMolecule();
+		trackMolecule(counter);
 
 		expect(counter.count.value).toBe(0);
 		expect(counter.doubled.value).toBe(0);
@@ -40,7 +42,8 @@ describe("molecule", () => {
 			return { count };
 		});
 
-		const instance = mountMolecule(CounterMolecule, { initialCount: 3 });
+		const instance = CounterMolecule({ initialCount: 3 });
+		trackMolecule(instance);
 
 		expect(instance.count.value).toBe(3);
 	});
@@ -58,11 +61,12 @@ describe("molecule", () => {
 			return {};
 		});
 
-		const instance = mountMolecule(DemoMolecule);
+		const instance = DemoMolecule();
+		trackMolecule(instance);
 
 		expect(cleanup).not.toHaveBeenCalled();
 
-		cleanupMolecule(instance);
+		disposeMolecule(instance);
 
 		expect(cleanup).toHaveBeenCalledTimes(1);
 	});
@@ -82,9 +86,10 @@ describe("molecule", () => {
 			return {};
 		});
 
-		const parent = mountMolecule(ParentMolecule);
+		const parent = ParentMolecule();
+		trackMolecule(parent);
 
-		cleanupMolecule(parent);
+		disposeMolecule(parent);
 
 		expect(childCleanup).toHaveBeenCalledTimes(1);
 	});
@@ -102,11 +107,11 @@ describe("molecule", () => {
 			throw new Error("boom");
 		});
 
-		expect(() => mountMolecule(DemoMolecule)).toThrow("boom");
+		expect(() => DemoMolecule()).toThrow("boom");
 		expect(cleanup).toHaveBeenCalledTimes(1);
 	});
 
-	it("cleanupMolecules tears down every tracked instance", () => {
+	it("cleanupTrackedMolecules tears down every tracked instance", () => {
 		const cleanup = vi.fn();
 
 		const DemoMolecule = molecule(() => {
@@ -116,10 +121,10 @@ describe("molecule", () => {
 			return {};
 		});
 
-		mountMolecule(DemoMolecule);
-		mountMolecule(DemoMolecule);
+		trackMolecule(DemoMolecule());
+		trackMolecule(DemoMolecule());
 
-		cleanupMolecules();
+		cleanupTrackedMolecules();
 
 		expect(cleanup).toHaveBeenCalledTimes(2);
 	});
@@ -135,7 +140,8 @@ describe("molecule", () => {
 			return { child };
 		});
 
-		const parent = mountMolecule(ParentMolecule, { childId: 42 });
+		const parent = ParentMolecule({ childId: 42 });
+		trackMolecule(parent);
 		expect(parent.child.identifier.value).toBe(42);
 	});
 
