@@ -35,6 +35,7 @@ This repository now uses [changelogen](https://github.com/unjs/changelogen) to i
 
 1. Ensure `main` is up to date and clean. Run `pnpm changelog --no-output` if you want to preview the generated notes without touching the tree.
 2. Execute `pnpm release`. This script runs `pnpm test`, `pnpm build`, and `changelogen --release` in sequence. The command bumps the version in `package.json`, rewrites `CHANGELOG.md`, and creates a `chore(release): vX.Y.Z` commit alongside the annotated `vX.Y.Z` tag.
+   - If you want to force the bump level (for example, keep using minor bumps during the 0.x phase), pass `--minor` / `--patch` / etc: `pnpm release -- --minor`.
 3. Push the commit and tag together: `git push origin main --follow-tags`. If you need to stage multiple release commits, push in chronological order so tags stay in sync.
 4. Tag pushes trigger `.github/workflows/publish.yml` automatically. The job runs on the `release` environment, installs dependencies, executes tests/type checks/build, publishes to npm via OIDC trusted publishing, and then calls `pnpm exec changelogen gh release vX.Y.Z --token $GITHUB_TOKEN` to sync the GitHub Release body with the freshly updated `CHANGELOG.md`.
 
