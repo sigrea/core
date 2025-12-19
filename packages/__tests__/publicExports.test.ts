@@ -1,20 +1,31 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
 	computed,
 	deepSignal,
+	disposeMolecule,
+	disposeTrackedMolecules,
 	isComputed,
 	isDeepSignal,
+	isMoleculeInstance,
 	isSignal,
+	molecule,
 	nextTick,
+	onUnmount,
 	pauseTracking,
 	resumeTracking,
 	signal,
 	toValue,
+	trackMolecule,
+	use,
 	watchEffect,
 } from "..";
 
 describe("public exports", () => {
+	afterEach(() => {
+		disposeTrackedMolecules();
+	});
+
 	it("exposes isSignal() and toValue() from the package entry", () => {
 		const count = signal(1);
 		const getter = () => 5;
@@ -53,5 +64,45 @@ describe("public exports", () => {
 		await nextTick();
 		expect(runs).toBe(1);
 		stop();
+	});
+
+	it("exposes molecule helpers from the package entry", () => {
+		const teardown = vi.fn();
+		const childTeardown = vi.fn();
+
+		const DemoMolecule = molecule(() => {
+			const count = signal(1);
+			onUnmount(() => {
+				teardown();
+			});
+			return { count };
+		});
+
+		const ChildMolecule = molecule(() => {
+			onUnmount(() => {
+				childTeardown();
+			});
+			return {};
+		});
+
+		const ParentMolecule = molecule(() => {
+			use(ChildMolecule);
+			return {};
+		});
+
+		const instance = DemoMolecule();
+		trackMolecule(instance);
+		expect(isMoleculeInstance(instance)).toBe(true);
+		expect(instance.count.value).toBe(1);
+
+		const parent = ParentMolecule();
+		trackMolecule(parent);
+		expect(isMoleculeInstance(parent)).toBe(true);
+
+		disposeMolecule(parent);
+		expect(childTeardown).toHaveBeenCalledTimes(1);
+
+		disposeMolecule(instance);
+		expect(teardown).toHaveBeenCalledTimes(1);
 	});
 });
