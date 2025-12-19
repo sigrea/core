@@ -10,7 +10,7 @@ It provides core primitives to build hooks, plus optional lifecycles for ownersh
 
 - **Core primitives.** `signal`, `computed`, `deepSignal`, `watch`, and `watchEffect`.
 - **Lifecycles.** `Scope`, `onMount`, and `onUnmount` for cleanup boundaries.
-- **Molecules.** `molecule()` is a UI-less lifecycle container (not "all your logic").
+- **Molecules.** `molecule()` is a UI-less lifecycle container.
 - **Composition.** Build molecule trees via `use()`.
 - **Testing.** `trackMolecule` + `disposeTrackedMolecules` helps reproduce lifecycles in tests.
 
