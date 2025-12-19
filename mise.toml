@@ -20,6 +20,12 @@ run = [
 description = "Preview changelog notes (no file changes)"
 run = "pnpm exec changelogen --no-output"
 
+[tasks.release_patch]
+description = "Cut release commit + tag (force patch)"
+depends = ["ci"]
+confirm = "Create release commit + tag (patch) on main?"
+run = 'test "$(git rev-parse --abbrev-ref HEAD)" = "main" && pnpm exec changelogen --clean --release --patch'
+
 [tasks.release_minor]
 description = "Cut release commit + tag (force minor)"
 depends = ["ci"]

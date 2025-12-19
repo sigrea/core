@@ -5,8 +5,13 @@
 </p>
 
 Sigrea is a small reactive core built on [alien-signals](https://github.com/stackblitz/alien-signals).
-It adds Vue-inspired deep reactivity and scope-based lifecycles.
+It adds deep reactivity and scope-based lifecycles.
 It provides core primitives to build hooks, plus optional lifecycles for ownership and cleanup.
+
+Inspired by:
+- [Vue 3](https://vuejs.org/) — deep reactivity and scope control
+- [nanostores](https://github.com/nanostores/nanostores) — store-centric architecture
+- [bunshi](https://github.com/saasquatch/bunshi) — molecule and use() API design
 
 - **Core primitives.** `signal`, `computed`, `deepSignal`, `watch`, and `watchEffect`.
 - **Lifecycles.** `Scope`, `onMount`, and `onUnmount` for cleanup boundaries.
@@ -17,6 +22,7 @@ It provides core primitives to build hooks, plus optional lifecycles for ownersh
 ## Table of Contents
 
 - [Install](#install)
+- [Adapters](#adapters)
 - [Quick Start](#quick-start)
 - [Hooks](#hooks)
 - [Molecules](#molecules)
@@ -30,6 +36,15 @@ It provides core primitives to build hooks, plus optional lifecycles for ownersh
 ```bash
 npm install @sigrea/core
 ```
+
+## Adapters
+
+Official adapters connect Sigrea molecules and signals to UI frameworks:
+
+- **[@sigrea/vue](https://github.com/sigrea/vue)** — Vue 3.4+ composables (`useMolcule`, `useSignal`, `useMutableSignal`, `useDeepSignal`)
+- **[@sigrea/react](https://github.com/sigrea/react)** — React 18+ hooks (`useMolcule`, `useSignal`, `useComputed`, `useDeepSignal`)
+
+Each adapter binds molecule lifecycles to component lifecycles and synchronizes signal subscriptions with the framework's reactivity system.
 
 ## Quick Start
 
