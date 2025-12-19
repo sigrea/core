@@ -1,0 +1,32 @@
+[tools]
+pnpm = "10.0.0"
+
+[tasks.check_node]
+description = "Ensure Node.js version is >= 20"
+run = "node -e 'const major = Number(process.versions.node.split(\".\")[0]); if (major < 20) { console.error(`Node.js >= 20 is required (current: ${process.versions.node})`); process.exit(1); }'"
+
+[tasks.ci]
+description = "Run CI-equivalent checks (install/test/typecheck/build/format)"
+depends = ["check_node"]
+run = [
+  "pnpm install",
+  "pnpm -s test",
+  "pnpm -s typecheck",
+  "pnpm -s build",
+  "pnpm -s format",
+]
+
+[tasks.notes]
+description = "Preview changelog notes (no file changes)"
+run = "pnpm exec changelogen --no-output"
+
+[tasks.release_minor]
+description = "Cut release commit + tag (force minor)"
+depends = ["ci"]
+confirm = "Create release commit + tag (minor) on main?"
+run = 'test "$(git rev-parse --abbrev-ref HEAD)" = "main" && pnpm exec changelogen --clean --release --minor'
+
+[tasks.push_release]
+description = "Push main + tags (triggers publish.yml)"
+confirm = "Push main and tags to origin?"
+run = 'test "$(git rev-parse --abbrev-ref HEAD)" = "main" && git push origin main --follow-tags'
