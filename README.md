@@ -17,7 +17,7 @@ It provides core primitives to build hooks, plus optional lifecycles for ownersh
 Inspired by:
 - [Vue 3](https://vuejs.org/) — deep reactivity and scope control
 - [nanostores](https://github.com/nanostores/nanostores) — store-centric architecture
-- [bunshi](https://github.com/saasquatch/bunshi) — molecule and use() API design
+- [bunshi](https://github.com/saasquatch/bunshi) — molecule and `use()` API design
 
 ## Table of Contents
 
