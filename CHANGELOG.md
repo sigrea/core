@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.4.0
+
+[compare changes](https://github.com/sigrea/core/compare/v0.3.1...v0.4.0)
+
+### 💅 Refactors
+
+- ⚠️  Migrate logic module to molecule factories ([#42](https://github.com/sigrea/core/pull/42))
+
+### 🏡 Chore
+
+- Streamline PR template with concise checks ([0ce7d94](https://github.com/sigrea/core/commit/0ce7d94))
+- Streamline PR template with concise checks ([#41](https://github.com/sigrea/core/pull/41))
+
+### 🤖 CI
+
+- Migrate to OIDC trusted publishing ([#43](https://github.com/sigrea/core/pull/43))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️  Migrate logic module to molecule factories ([#42](https://github.com/sigrea/core/pull/42))
+
+### ❤️ Contributors
+
+- Aose ([@aose-yuu](https://github.com/aose-yuu))
+- Aose-yuu <aose.developer@gmail.com>
+
 ## v0.3.1
 
 [compare changes](https://github.com/sigrea/core/compare/v0.3.0...v0.3.1)
