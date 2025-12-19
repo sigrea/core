@@ -9,6 +9,7 @@
 ## Verification
 <!-- Quick checks run. If not run, say why. -->
 - [ ] `pnpm test`
+- [ ] `pnpm typecheck`
 - [ ] `pnpm build`
 - [ ] `pnpm format`
-- [ ] CI PR format check passes (title/body rules)
+- [ ] CI PR title check passes (Conventional Commits)
