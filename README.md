@@ -8,16 +8,16 @@ Sigrea is a small reactive core built on [alien-signals](https://github.com/stac
 It adds deep reactivity and scope-based lifecycles.
 It provides core primitives to build hooks, plus optional lifecycles for ownership and cleanup.
 
-Inspired by:
-- [Vue 3](https://vuejs.org/) — deep reactivity and scope control
-- [nanostores](https://github.com/nanostores/nanostores) — store-centric architecture
-- [bunshi](https://github.com/saasquatch/bunshi) — molecule and use() API design
-
 - **Core primitives.** `signal`, `computed`, `deepSignal`, `watch`, and `watchEffect`.
 - **Lifecycles.** `Scope`, `onMount`, and `onUnmount` for cleanup boundaries.
 - **Molecules.** `molecule()` is a UI-less lifecycle container (not "all your logic").
 - **Composition.** Build molecule trees via `use()`.
 - **Testing.** `trackMolecule` + `disposeTrackedMolecules` helps reproduce lifecycles in tests.
+
+Inspired by:
+- [Vue 3](https://vuejs.org/) — deep reactivity and scope control
+- [nanostores](https://github.com/nanostores/nanostores) — store-centric architecture
+- [bunshi](https://github.com/saasquatch/bunshi) — molecule and use() API design
 
 ## Table of Contents
 
