@@ -266,6 +266,16 @@ Return `ScopeCleanupErrorResponse.Propagate` to rethrow immediately for synchron
 
 ## Development
 
+This repo targets Node.js 20 or later.
+
+If you use mise:
+
+- `mise trust -y` — trust `mise.toml` (first run only).
+- `mise run ci` — run CI-equivalent checks locally.
+- `mise run notes` — preview release notes (optional).
+
+You can also run pnpm scripts directly:
+
 - `pnpm install` — install dependencies.
 - `pnpm test` — run tests.
 - `pnpm typecheck` — run TypeScript type checking.
