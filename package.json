@@ -4,7 +4,7 @@
 	"description": "The signal base reactive programming library.",
 	"license": "MIT",
 	"type": "module",
-	"packageManager": "pnpm@10.0.0",
+	"packageManager": "pnpm@10.26.1",
 	"publishConfig": {
 		"access": "public"
 	},
