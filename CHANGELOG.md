@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.4.2
+
+[compare changes](https://github.com/sigrea/core/compare/v0.4.0...v0.4.2)
+
+### 🩹 Fixes
+
+- Formatting of inspired by section in README ([9ec866d](https://github.com/sigrea/core/commit/9ec866d))
+
+### 📖 Documentation
+
+- Clarify changelogen forced version usage ([9cd3fb3](https://github.com/sigrea/core/commit/9cd3fb3))
+- Add inspirations section and adapters to README ([#45](https://github.com/sigrea/core/pull/45))
+
+### 🏡 Chore
+
+- Add mise tasks for releases ([#44](https://github.com/sigrea/core/pull/44))
+- **release:** V0.4.1 ([5a81e0d](https://github.com/sigrea/core/commit/5a81e0d))
+
+### ❤️ Contributors
+
+- Aose-yuu <aose.developer@gmail.com>
+- Aose ([@aose-yuu](https://github.com/aose-yuu))
+
 ## v0.4.1
 
 [compare changes](https://github.com/sigrea/core/compare/v0.4.0...v0.4.1)
