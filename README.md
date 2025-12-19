@@ -10,9 +10,9 @@ It provides core primitives to build hooks, plus optional lifecycles for ownersh
 
 - **Core primitives.** `signal`, `computed`, `deepSignal`, `watch`, and `watchEffect`.
 - **Lifecycles.** `Scope`, `onMount`, and `onUnmount` for cleanup boundaries.
-- **Molecules.** `molecule()` is a UI-less lifecycle container (not “all your logic”).
+- **Molecules.** `molecule()` is a UI-less lifecycle container (not "all your logic").
 - **Composition.** Build molecule trees via `use()`.
-- **Testing.** `mountMolecule` + `cleanupMolecules` helps reproduce lifecycles in tests.
+- **Testing.** `trackMolecule` + `cleanupTrackedMolecules` helps reproduce lifecycles in tests.
 
 ## Table of Contents
 
@@ -204,14 +204,14 @@ Notes:
 import { afterEach, expect, it } from "vitest";
 
 import {
-  cleanupMolecules,
+  cleanupTrackedMolecules,
   molecule,
-  mountMolecule,
   readonly,
   signal,
+  trackMolecule,
 } from "@sigrea/core";
 
-afterEach(() => cleanupMolecules());
+afterEach(() => cleanupTrackedMolecules());
 
 it("increments and exposes derived state", () => {
   const CounterMolecule = molecule(() => {
@@ -227,7 +227,8 @@ it("increments and exposes derived state", () => {
     };
   });
 
-  const counter = mountMolecule(CounterMolecule);
+  const counter = CounterMolecule();
+  trackMolecule(counter);
   counter.increment();
 
   expect(counter.count.value).toBe(11);
