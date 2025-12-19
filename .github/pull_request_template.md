@@ -13,4 +13,3 @@ Quick checks run. If not run, say why.
 CI also validates PR title via semantic-pr.yml (Conventional Commits).
 -->
 - [ ] `mise run ci`
-- [ ] `mise run notes` (for release-related changes)
