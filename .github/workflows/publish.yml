@@ -1,23 +1,18 @@
 name: publish
 on:
-  workflow_dispatch:
   push:
     tags:
       - 'v*'
 permissions:
-  contents: write
   id-token: write
-  packages: write
+  contents: write
 jobs:
   publish:
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: release
     concurrency: publish-${{ github.ref }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -25,28 +20,32 @@ jobs:
       - uses: pnpm/action-setup@v4
       - run: pnpm install
       - run: pnpm test
+      - run: pnpm typecheck
       - run: pnpm build
-      - name: npm publish with provenance
-        run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Read version from package.json
-        id: ver
+      - name: Ensure npm CLI supports trusted publishing
         run: |
+          npm i -g npm@11.5.1
+          npm --version
+
+      - name: Detect already-published version
+        id: npmcheck
+        run: |
+          set -euo pipefail
+          NAME=$(node -p "require('./package.json').name")
           VERSION=$(node -p "require('./package.json').version")
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-      - name: Create vX.Y.Z tag if missing
-        run: |
-          TAG="v${{ steps.ver.outputs.version }}"
-          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
-            echo "Tag $TAG already exists. Skipping."
-            exit 0
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$TAG" -m "$TAG"
-          git push origin "$TAG"
+
+      - name: npm publish (OIDC trusted publishing)
+        if: steps.npmcheck.outputs.published != 'true'
+        run: npm publish --access public
+
       - name: Sync GitHub Release notes via changelogen
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm dlx changelogen gh release v${{ steps.ver.outputs.version }} --token "${GITHUB_TOKEN}"
+        run: pnpm exec changelogen gh release ${{ github.ref_name }} --token "${GITHUB_TOKEN}"
