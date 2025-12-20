@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.4.3
+
+[compare changes](https://github.com/sigrea/core/compare/v0.4.2...v0.4.3)
+
+### 🏡 Chore
+
+- Update alien-signals to 3.1.1 ([#46](https://github.com/sigrea/core/pull/46))
+
+### ❤️ Contributors
+
+- Aose ([@aose-yuu](https://github.com/aose-yuu))
+
 ## v0.4.2
 
 [compare changes](https://github.com/sigrea/core/compare/v0.4.0...v0.4.2)
