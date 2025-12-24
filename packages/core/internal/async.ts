@@ -1,3 +1,5 @@
+import { __DEV__ } from "../../constants";
+
 export function isPromiseLike<T = unknown>(
 	value: unknown,
 ): value is PromiseLike<T> {
@@ -9,7 +11,7 @@ export function isPromiseLike<T = unknown>(
 }
 
 export function logUnhandledAsyncError(source: string, error: unknown): void {
-	if (process.env.NODE_ENV !== "production") {
-		console.error(`${source} rejected.`, error);
-	}
+	// if (__DEV__) {
+	// 	console.error(`${source} rejected.`, error);
+	// }
 }

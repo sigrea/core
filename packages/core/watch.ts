@@ -1,3 +1,4 @@
+import { __DEV__ } from "../constants";
 import {
 	type DebuggerHook,
 	Effect,
@@ -155,9 +156,9 @@ export type WatchCallback<V = unknown, OV = unknown> = (
 const INITIAL_WATCHER_VALUE: unknown = {};
 
 const NOOP_ON_CLEANUP: OnCleanup = () => {
-	if (process.env.NODE_ENV !== "production") {
-		console.warn("onCleanup() called with no active watch run.");
-	}
+	// if (__DEV__) {
+	// 	console.warn("onCleanup() called with no active watch run.");
+	// }
 };
 
 class Watcher {
@@ -342,14 +343,14 @@ class Watcher {
 
 			const changed = forced || fallbackChanged;
 
-			if (process.env.DEBUG_WATCH === "true") {
-				console.log("watch-debug", {
-					dependencyTriggered,
-					fallbackChanged,
-					forced,
-					changed,
-				});
-			}
+			// if (__DEV__) {
+			// 	console.log("watch-debug", {
+			// 		dependencyTriggered,
+			// 		fallbackChanged,
+			// 		forced,
+			// 		changed,
+			// 	});
+			// }
 
 			if (changed) {
 				const { context, onCleanup } = this.prepareCleanupContext();
@@ -437,11 +438,11 @@ class Watcher {
 
 		return {
 			getter: () => {
-				if (process.env.NODE_ENV !== "production") {
-					console.warn(
-						"Invalid watch source. Source must be a signal, a computed value !",
-					);
-				}
+				// if (__DEV__) {
+				// 	console.warn(
+				// 		"Invalid watch source. Source must be a signal, a computed value !",
+				// 	);
+				// }
 				return NOOP();
 			},
 			isMultiSource: false,
@@ -485,11 +486,11 @@ class Watcher {
 		if (isFunction(entry)) {
 			return (entry as () => unknown)();
 		}
-		if (process.env.NODE_ENV !== "production") {
-			console.warn(
-				"Invalid watch source entry. Entries must be signals, deep signals, or getter functions.",
-			);
-		}
+		// if (__DEV__) {
+		// 	console.warn(
+		// 		"Invalid watch source entry. Entries must be signals, deep signals, or getter functions.",
+		// 	);
+		// }
 		return entry;
 	}
 

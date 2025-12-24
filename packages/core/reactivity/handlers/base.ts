@@ -1,3 +1,4 @@
+import { __DEV__ } from "../../../constants";
 import {
 	TrackOpType,
 	TriggerOpType,
@@ -21,11 +22,11 @@ function hasOwn(target: object, key: PropertyKey): boolean {
 }
 
 export function warnReadonlyOperation(key: PropertyKey): void {
-	if (process.env.NODE_ENV !== "production") {
-		console.warn(
-			`Set operation on key "${String(key)}" failed: target is readonly.`,
-		);
-	}
+	// if (__DEV__) {
+	// 	console.warn(
+	// 		`Set operation on key "${String(key)}" failed: target is readonly.`,
+	// 	);
+	// }
 }
 
 export function createBaseHandlers(hooks: HandlerHooks): ProxyHandler<object> {
