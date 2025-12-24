@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.4.4
+
+[compare changes](https://github.com/sigrea/core/compare/v0.4.3...v0.4.4)
+
+### 🩹 Fixes
+
+- Disable __DEV__ checks to prevent browser runtime errors ([#47](https://github.com/sigrea/core/pull/47))
+- Comment out __DEV__ constant and imports ([#48](https://github.com/sigrea/core/pull/48))
+
+### ❤️ Contributors
+
+- Aose ([@aose-yuu](https://github.com/aose-yuu))
+
 ## v0.4.3
 
 [compare changes](https://github.com/sigrea/core/compare/v0.4.2...v0.4.3)
