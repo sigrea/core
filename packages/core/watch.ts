@@ -1,3 +1,4 @@
+import { __DEV__ } from "../constants";
 import {
 	type DebuggerHook,
 	Effect,
@@ -155,7 +156,7 @@ export type WatchCallback<V = unknown, OV = unknown> = (
 const INITIAL_WATCHER_VALUE: unknown = {};
 
 const NOOP_ON_CLEANUP: OnCleanup = () => {
-	if (process.env.NODE_ENV !== "production") {
+	if (__DEV__) {
 		console.warn("onCleanup() called with no active watch run.");
 	}
 };
@@ -342,7 +343,7 @@ class Watcher {
 
 			const changed = forced || fallbackChanged;
 
-			if (process.env.DEBUG_WATCH === "true") {
+			if (__DEV__) {
 				console.log("watch-debug", {
 					dependencyTriggered,
 					fallbackChanged,
@@ -437,7 +438,7 @@ class Watcher {
 
 		return {
 			getter: () => {
-				if (process.env.NODE_ENV !== "production") {
+				if (__DEV__) {
 					console.warn(
 						"Invalid watch source. Source must be a signal, a computed value !",
 					);
@@ -485,7 +486,7 @@ class Watcher {
 		if (isFunction(entry)) {
 			return (entry as () => unknown)();
 		}
-		if (process.env.NODE_ENV !== "production") {
+		if (__DEV__) {
 			console.warn(
 				"Invalid watch source entry. Entries must be signals, deep signals, or getter functions.",
 			);

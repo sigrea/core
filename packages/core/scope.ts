@@ -1,3 +1,4 @@
+import { __DEV__ } from "../constants";
 import { isPromiseLike } from "./internal/async";
 
 export type Cleanup = () => void | Promise<void>;
@@ -60,7 +61,7 @@ function resolveCleanupErrorResponse(
 				return ScopeCleanupErrorResponse.Propagate;
 			}
 		} catch (handlerError) {
-			if (process.env.NODE_ENV !== "production") {
+			if (__DEV__) {
 				console.error(
 					"Scope cleanup error handler threw an error.",
 					handlerError,
@@ -70,7 +71,7 @@ function resolveCleanupErrorResponse(
 		}
 	}
 
-	if (process.env.NODE_ENV !== "production") {
+	if (__DEV__) {
 		const phaseLabel =
 			phase === "dispose"
 				? "Scope cleanup failed"
@@ -275,7 +276,7 @@ export function registerScopeCleanup(
 	scope: Scope | undefined = activeScope,
 ): () => void {
 	if (scope === undefined) {
-		if (process.env.NODE_ENV !== "production") {
+		if (__DEV__) {
 			console.warn(
 				"registerScopeCleanup() called with no active scope; cleanup runs immediately.",
 			);
