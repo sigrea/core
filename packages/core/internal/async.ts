@@ -11,7 +11,7 @@ export function isPromiseLike<T = unknown>(
 }
 
 export function logUnhandledAsyncError(source: string, error: unknown): void {
-	if (__DEV__) {
-		console.error(`${source} rejected.`, error);
-	}
+	// if (__DEV__) {
+	// 	console.error(`${source} rejected.`, error);
+	// }
 }
