@@ -1,4 +1,4 @@
-import { __DEV__ } from "../../constants";
+// import { __DEV__ } from "../../constants";
 
 export function isPromiseLike<T = unknown>(
 	value: unknown,

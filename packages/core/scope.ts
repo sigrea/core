@@ -1,4 +1,4 @@
-import { __DEV__ } from "../constants";
+// import { __DEV__ } from "../constants";
 import { isPromiseLike } from "./internal/async";
 
 export type Cleanup = () => void | Promise<void>;
