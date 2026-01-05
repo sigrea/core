@@ -129,7 +129,10 @@ Use molecules when you need:
 
 - a clear ownership + cleanup boundary (`Scope`, `onUnmount`),
 - parent-child relationships between lifecycled units (`use()`),
-- per-instance configuration via props.
+- per-instance initial configuration via props.
+
+Props are meant to be immutable configuration. Sigrea does not track prop changes.
+If you need dynamic inputs, model them via signals or explicit molecule methods.
 
 Inside `setup`, you can call hooks or use the core primitives directly.
 Child molecules are internal dependencies—prefer returning only the outputs
