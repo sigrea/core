@@ -105,6 +105,30 @@ describe("reactivity scope", () => {
 		}
 	});
 
+	it("handles async cleanup rejections without triggering unhandledRejection", async () => {
+		const errorSpy = suppressConsoleError();
+		const unhandled = vi.fn();
+		process.on("unhandledRejection", unhandled);
+
+		try {
+			const scope = createScope();
+			runWithScope(scope, () => {
+				onDispose(() => Promise.reject(new Error("async failure")));
+			});
+
+			disposeScope(scope);
+
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(unhandled).not.toHaveBeenCalled();
+			expect(errorSpy).toHaveBeenCalled();
+		} finally {
+			process.off("unhandledRejection", unhandled);
+			errorSpy.mockRestore();
+		}
+	});
+
 	it("propagates cleanup errors when handler requests it", () => {
 		const scope = createScope();
 		const failure = new Error("boom");

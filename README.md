@@ -272,6 +272,10 @@ it("increments and exposes derived state", () => {
 Cleanup callbacks run when a scope is disposed.
 If a cleanup throws, Sigrea collects errors into an `AggregateError`.
 
+Async cleanups are not awaited.
+If an async cleanup rejects, Sigrea forwards the error to the handler (if any).
+In dev, Sigrea also logs the rejection.
+
 Use `setScopeCleanupErrorHandler` to customize error handling.
 This is useful for logging or reporting to monitoring services.
 

@@ -1,5 +1,5 @@
 import { __DEV__ } from "../constants";
-import { isPromiseLike } from "./internal/async";
+import { isPromiseLike, logUnhandledAsyncError } from "./internal/async";
 
 export type Cleanup = () => void | Promise<void>;
 
@@ -104,21 +104,27 @@ function runCleanupWithHandling(
 		return response;
 	};
 
-	const handleAsyncError = (error: unknown): void => {
-		const response = handleError(error, true);
-		if (response === ScopeCleanupErrorResponse.Propagate) {
-			throw error;
-		}
-		if (response !== ScopeCleanupErrorResponse.Suppress) {
-			throwAggregateCleanupError(errors ?? [error], scope, phase);
-		}
-	};
-
 	try {
 		const result = cleanup();
 		if (isPromiseLike(result)) {
 			void Promise.resolve(result).catch((error) => {
-				handleAsyncError(error);
+				const response = resolveCleanupErrorResponse(
+					scope,
+					cleanup,
+					index,
+					total,
+					phase,
+					error,
+				);
+
+				if (response === ScopeCleanupErrorResponse.Suppress) {
+					return;
+				}
+
+				const scopeLabel = scope !== undefined ? ` (scope #${scope.id})` : "";
+				const phaseLabel =
+					phase === "dispose" ? "Scope cleanup" : "Immediate scope cleanup";
+				logUnhandledAsyncError(`${phaseLabel}${scopeLabel}`, error);
 			});
 		}
 	} catch (error) {
