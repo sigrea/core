@@ -286,6 +286,27 @@ Return `ScopeCleanupErrorResponse.Propagate` to rethrow immediately for synchron
 
 This repo targets Node.js 20 or later.
 
+### Browser dev flag
+
+Some dev-only diagnostics are guarded by `__DEV__`.
+In Node.js, Sigrea uses `process.env.NODE_ENV !== "production"`.
+
+In browsers, you can override this at build time by defining a global constant
+`__SIGREA_DEV__` with your bundler.
+
+Vite example:
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite";
+
+export default defineConfig(({ command }) => ({
+  define: {
+    __SIGREA_DEV__: JSON.stringify(command === "serve"),
+  },
+}));
+```
+
 If you use mise:
 
 - `mise trust -y` — trust `mise.toml` (first run only).
