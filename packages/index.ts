@@ -85,10 +85,10 @@ export {
  */
 
 // onMount
-export { onMount } from "./lifecycle/onMount";
+export { onMount } from "./molecule/lifecycle/onMount";
 
 // onUnmount
-export { onUnmount } from "./lifecycle/onUnmount";
+export { onUnmount } from "./molecule/lifecycle/onUnmount";
 
 /**
  * ==================================================

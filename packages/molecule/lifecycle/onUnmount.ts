@@ -1,6 +1,6 @@
-import { getActiveMountJobRegistry } from "../core/internal/mountRegistry";
-import type { Cleanup, Scope } from "../core/scope";
-import { getCurrentScope, onDispose } from "../core/scope";
+import { getActiveMountJobRegistry } from "../../core/internal/mountRegistry";
+import type { Cleanup, Scope } from "../../core/scope";
+import { getCurrentScope, onDispose } from "../../core/scope";
 
 const ON_UNMOUNT_OUTSIDE_SCOPE_MESSAGE =
 	"onUnmount(...) can only be called during molecule setup or while a molecule is mounted.";

@@ -4,8 +4,8 @@ import {
 	disposeMolecule,
 	mountMolecule,
 	unmountMolecule,
-} from "../../molecule/internals";
-import { molecule } from "../../molecule/molecule";
+} from "../../internals";
+import { molecule } from "../../molecule";
 import { onMount } from "../onMount";
 import { onUnmount } from "../onUnmount";
 

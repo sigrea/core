@@ -6,9 +6,9 @@ import { onDispose } from "../../core/scope";
 import { signal } from "../../core/signal";
 import { watch } from "../../core/watch";
 import { watchEffect } from "../../core/watchEffect";
-import { onMount } from "../../lifecycle/onMount";
 import { get } from "../get";
 import { disposeMolecule, mountMolecule, unmountMolecule } from "../internals";
+import { onMount } from "../lifecycle/onMount";
 import { molecule } from "../molecule";
 import { disposeTrackedMolecules, trackMolecule } from "../testing";
 

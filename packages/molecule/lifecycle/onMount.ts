@@ -1,7 +1,10 @@
-import { isPromiseLike, logUnhandledAsyncError } from "../core/internal/async";
-import { getActiveMountJobRegistry } from "../core/internal/mountRegistry";
-import type { Cleanup, Scope } from "../core/scope";
-import { getCurrentScope, onDispose } from "../core/scope";
+import {
+	isPromiseLike,
+	logUnhandledAsyncError,
+} from "../../core/internal/async";
+import { getActiveMountJobRegistry } from "../../core/internal/mountRegistry";
+import type { Cleanup, Scope } from "../../core/scope";
+import { getCurrentScope, onDispose } from "../../core/scope";
 
 type MountCallbackResult = void | Cleanup | Promise<void | Cleanup>;
 
