@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure and Module Layout
-The library exports from `index.ts`, and `pnpm build` emits dual ESM and CJS bundles under `dist/`. Core signal primitives live in `packages/core`, lifecycle orchestration in `packages/lifecycle`, reusable molecule helpers in `packages/molecule`, and shared fixtures under `packages/__tests__`. Images that illustrate behavior stay in `images/`, while generated artifacts such as `dist/` and `coverage/` must be kept out of commits by relying on the existing `.gitignore`.
+The library exports from `index.ts`, and `pnpm build` emits dual ESM and CJS bundles under `dist/`. Core signal primitives live in `packages/core`, molecule lifecycle hooks live in `packages/molecule/lifecycle`, reusable molecule helpers live in `packages/molecule`, and shared fixtures live in `packages/__tests__`. Images that illustrate behavior stay in `images/`, while generated artifacts such as `dist/` and `coverage/` must be kept out of commits by relying on the existing `.gitignore`.
 
 ## Build, Test, and Local Development
 Install dependencies with `pnpm install` to match the locked Node 20 and pnpm 10 toolchain. `pnpm build` runs unbuild to compile TypeScript, `pnpm test` executes Vitest once in run mode, and `pnpm test:coverage` collects V8 instrumentation for release gating. Use `pnpm typecheck` for isolated `tsc` diagnostics, and call `pnpm cicheck` before large pushes to mimic CI by chaining tests, type checking, and formatting fixes. Run `pnpm format` (or `pnpm format:fix`) to apply Biome rules whenever code touches shared modules.
