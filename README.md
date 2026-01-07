@@ -41,8 +41,8 @@ npm install @sigrea/core
 
 Official adapters connect Sigrea molecules and signals to UI frameworks:
 
-- **[@sigrea/vue](https://github.com/sigrea/vue)** — Vue 3.4+ composables (`useMolcule`, `useSignal`, `useMutableSignal`, `useDeepSignal`)
-- **[@sigrea/react](https://github.com/sigrea/react)** — React 18+ hooks (`useMolcule`, `useSignal`, `useComputed`, `useDeepSignal`)
+- **[@sigrea/vue](https://github.com/sigrea/vue)** — Vue 3.4+ composables (`useMolecule`, `useSignal`, `useMutableSignal`, `useDeepSignal`)
+- **[@sigrea/react](https://github.com/sigrea/react)** — React 18+ hooks (`useMolecule`, `useSignal`, `useComputed`, `useDeepSignal`)
 
 Each adapter binds molecule lifecycles to component lifecycles and synchronizes signal subscriptions with the framework's reactivity system.
 
@@ -134,6 +134,12 @@ Use molecules when you need:
 Props are meant to be immutable configuration. Sigrea does not track prop changes.
 If you need dynamic inputs, model them via signals or explicit molecule methods.
 
+Molecule setup is cold.
+When `onMount`, `onUnmount`, `watch`, or `watchEffect` are called during setup,
+their work is deferred until the molecule is mounted.
+Official adapters mount and unmount molecules automatically.
+If you use the core package directly, call `mountMolecule()` and `unmountMolecule()`.
+
 Inside `setup`, you can call hooks or use the core primitives directly.
 Child molecules are internal dependencies—prefer returning only the outputs
 (signals, computed values, actions) that consumers need.
@@ -141,7 +147,7 @@ Child molecules are internal dependencies—prefer returning only the outputs
 ### Creating a molecule
 
 ```ts
-import { molecule, onUnmount, readonly, signal } from "@sigrea/core";
+import { molecule, onMount, onUnmount, readonly, signal } from "@sigrea/core";
 
 interface IntervalMoleculeProps {
   intervalMs: number;
@@ -149,12 +155,20 @@ interface IntervalMoleculeProps {
 
 const IntervalMolecule = molecule<IntervalMoleculeProps>((props) => {
   const tick = signal(0);
+  let id: ReturnType<typeof setInterval> | undefined;
 
-  const id = setInterval(() => {
-    tick.value += 1;
-  }, props.intervalMs);
+  onMount(() => {
+    id = setInterval(() => {
+      tick.value += 1;
+    }, props.intervalMs);
+  });
 
-  onUnmount(() => clearInterval(id));
+  onUnmount(() => {
+    if (id === undefined) {
+      return;
+    }
+    clearInterval(id);
+  });
 
   return {
     tick: readonly(tick),
@@ -212,7 +226,7 @@ export const DraftSessionMolecule = molecule<DraftSessionMoleculeProps>(
 Notes:
 
 - `get()` must be called synchronously during molecule setup.
-- `onUnmount()` callbacks and `watch()` effects are tied to the molecule scope.
+- `onUnmount()` callbacks and `watch()` effects are tied to the mount lifecycle.
 - Child molecules created via `get()` are disposed with their parent.
 
 ## Testing
