@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { computed } from "../../core/computed";
+import { nextTick } from "../../core/nextTick";
 import { onDispose } from "../../core/scope";
 import { signal } from "../../core/signal";
+import { watch } from "../../core/watch";
+import { watchEffect } from "../../core/watchEffect";
 import { onMount } from "../../lifecycle/onMount";
 import { get } from "../get";
 import { disposeMolecule, mountMolecule, unmountMolecule } from "../internals";
@@ -76,6 +79,84 @@ describe("molecule", () => {
 		disposeMolecule(instance);
 
 		expect(cleanup).toHaveBeenCalledTimes(1);
+	});
+
+	it("defers watchEffect until the molecule is mounted", async () => {
+		const runs: number[] = [];
+
+		const DemoMolecule = molecule(() => {
+			const count = signal(0);
+
+			watchEffect(() => {
+				runs.push(count.value);
+			});
+
+			return { count };
+		});
+
+		const instance = DemoMolecule();
+		trackMolecule(instance);
+
+		expect(runs).toEqual([]);
+
+		instance.count.value = 1;
+		await nextTick();
+		expect(runs).toEqual([]);
+
+		mountMolecule(instance);
+		expect(runs).toEqual([1]);
+
+		instance.count.value = 2;
+		await nextTick();
+		expect(runs).toEqual([1, 2]);
+
+		unmountMolecule(instance);
+
+		instance.count.value = 3;
+		await nextTick();
+		expect(runs).toEqual([1, 2]);
+
+		mountMolecule(instance);
+		expect(runs).toEqual([1, 2, 3]);
+	});
+
+	it("defers watch until mounted and preserves immediate behavior on mount", async () => {
+		const values: number[] = [];
+
+		const DemoMolecule = molecule(() => {
+			const count = signal(0);
+
+			watch(
+				() => count.value,
+				(value) => {
+					values.push(value);
+				},
+				{ immediate: true },
+			);
+
+			return { count };
+		});
+
+		const instance = DemoMolecule();
+		trackMolecule(instance);
+
+		expect(values).toEqual([]);
+
+		mountMolecule(instance);
+		expect(values).toEqual([0]);
+
+		instance.count.value = 1;
+		await nextTick();
+		expect(values).toEqual([0, 1]);
+
+		unmountMolecule(instance);
+
+		instance.count.value = 2;
+		await nextTick();
+		expect(values).toEqual([0, 1]);
+
+		mountMolecule(instance);
+		expect(values).toEqual([0, 1, 2]);
 	});
 
 	it("disposes child molecule when the parent is cleaned up", () => {
