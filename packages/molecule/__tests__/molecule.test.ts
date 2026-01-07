@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { computed } from "../../core/computed";
+import { onDispose } from "../../core/scope";
 import { signal } from "../../core/signal";
 import { onMount } from "../../lifecycle/onMount";
-import { onUnmount } from "../../lifecycle/onUnmount";
-import { disposeMolecule } from "../internals";
+import { disposeMolecule, mountMolecule, unmountMolecule } from "../internals";
 import { molecule } from "../molecule";
 import { disposeTrackedMolecules, trackMolecule } from "../testing";
 import { use } from "../use";
@@ -48,11 +48,13 @@ describe("molecule", () => {
 		expect(instance.count.value).toBe(3);
 	});
 
-	it("runs onUnmount cleanups when molecule is disposed", () => {
+	it("runs onMount callbacks when mounted and runs returned cleanups on dispose", () => {
 		const cleanup = vi.fn();
+		const mounts = vi.fn();
 
 		const DemoMolecule = molecule(() => {
 			onMount(() => {
+				mounts();
 				return () => {
 					cleanup();
 				};
@@ -64,6 +66,11 @@ describe("molecule", () => {
 		const instance = DemoMolecule();
 		trackMolecule(instance);
 
+		expect(mounts).not.toHaveBeenCalled();
+		expect(cleanup).not.toHaveBeenCalled();
+
+		mountMolecule(instance);
+		expect(mounts).toHaveBeenCalledTimes(1);
 		expect(cleanup).not.toHaveBeenCalled();
 
 		disposeMolecule(instance);
@@ -75,7 +82,7 @@ describe("molecule", () => {
 		const childCleanup = vi.fn();
 
 		const ChildMolecule = molecule(() => {
-			onUnmount(() => {
+			onDispose(() => {
 				childCleanup();
 			});
 			return {};
@@ -98,10 +105,8 @@ describe("molecule", () => {
 		const cleanup = vi.fn();
 
 		const DemoMolecule = molecule(() => {
-			onMount(() => {
-				return () => {
-					cleanup();
-				};
+			onDispose(() => {
+				cleanup();
 			});
 
 			throw new Error("boom");
@@ -115,7 +120,7 @@ describe("molecule", () => {
 		const cleanup = vi.fn();
 
 		const DemoMolecule = molecule(() => {
-			onUnmount(() => {
+			onDispose(() => {
 				cleanup();
 			});
 			return {};
@@ -127,6 +132,45 @@ describe("molecule", () => {
 		disposeTrackedMolecules();
 
 		expect(cleanup).toHaveBeenCalledTimes(2);
+	});
+
+	it("mounts and unmounts child molecules along the parent molecule", () => {
+		const events: string[] = [];
+
+		const ChildMolecule = molecule(() => {
+			onMount(() => {
+				events.push("child-mount");
+				return () => {
+					events.push("child-unmount");
+				};
+			});
+			return {};
+		});
+
+		const ParentMolecule = molecule(() => {
+			use(ChildMolecule);
+			onMount(() => {
+				events.push("parent-mount");
+				return () => {
+					events.push("parent-unmount");
+				};
+			});
+			return {};
+		});
+
+		const parent = ParentMolecule();
+		trackMolecule(parent);
+
+		mountMolecule(parent);
+		expect(events).toEqual(["child-mount", "parent-mount"]);
+
+		unmountMolecule(parent);
+		expect(events).toEqual([
+			"child-mount",
+			"parent-mount",
+			"child-unmount",
+			"parent-unmount",
+		]);
 	});
 
 	it("passes props to child molecule instances via use", () => {

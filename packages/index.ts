@@ -87,7 +87,6 @@ export {
 
 // onMount
 export { onMount } from "./lifecycle/onMount";
-export type { MountOptions } from "./lifecycle/onMount";
 
 // onUnmount
 export { onUnmount } from "./lifecycle/onUnmount";
@@ -120,7 +119,11 @@ export type { Snapshot, SnapshotHandler } from "./molecule/handlers";
 export { isMoleculeInstance } from "./molecule/instance";
 
 // runtime API
-export { disposeMolecule } from "./molecule/internals";
+export {
+	disposeMolecule,
+	mountMolecule,
+	unmountMolecule,
+} from "./molecule/internals";
 
 // test utilities
 export { trackMolecule, disposeTrackedMolecules } from "./molecule/testing";

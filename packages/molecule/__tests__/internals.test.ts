@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { onUnmount } from "../../lifecycle/onUnmount";
+import { onDispose } from "../../core/scope";
 import { isMoleculeInstance } from "../instance";
 import { disposeMolecule } from "../internals";
 import { molecule } from "../molecule";
@@ -22,7 +22,7 @@ describe("molecule internals", () => {
 		const cleanup = vi.fn();
 
 		const DemoMolecule = molecule(() => {
-			onUnmount(() => {
+			onDispose(() => {
 				cleanup();
 			});
 			return {};

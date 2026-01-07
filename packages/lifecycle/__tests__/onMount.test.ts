@@ -1,70 +1,44 @@
 import { describe, expect, it } from "vitest";
 
+import {
+	disposeMolecule,
+	mountMolecule,
+	unmountMolecule,
+} from "../../molecule/internals";
+import { molecule } from "../../molecule/molecule";
 import { onMount } from "../onMount";
-import { onUnmount } from "../onUnmount";
 
 describe("onMount", () => {
-	it("runs callback and returns scope handle", () => {
-		let mounted = false;
-		let cleaned = false;
-
-		const scope = onMount(() => {
-			mounted = true;
-			return () => {
-				cleaned = true;
-			};
-		});
-
-		expect(mounted).toBe(true);
-		expect(cleaned).toBe(false);
-
-		onUnmount(scope);
-		expect(cleaned).toBe(true);
-	});
-
-	it("disposes child scopes when parent unmounts", () => {
+	it("runs callback on mount and runs returned cleanup on unmount", () => {
 		const events: string[] = [];
 
-		const parent = onMount(() => {
-			events.push("parent-mount");
-		});
-
-		onMount(
-			() => {
-				events.push("child-mount");
+		const DemoMolecule = molecule(() => {
+			onMount(() => {
+				events.push("mount");
 				return () => {
-					events.push("child-cleanup");
+					events.push("cleanup");
 				};
-			},
-			{ parent },
-		);
-
-		expect(events).toEqual(["parent-mount", "child-mount"]);
-
-		onUnmount(parent);
-
-		expect(events).toEqual(["parent-mount", "child-mount", "child-cleanup"]);
-	});
-
-	it("registers cleanup returned from an async callback", async () => {
-		const events: string[] = [];
-
-		const scope = onMount(async () => {
-			events.push("mount-start");
-			await Promise.resolve();
-			events.push("mount-resolved");
-			return () => {
-				events.push("cleanup");
-			};
+			});
+			return {};
 		});
 
-		expect(events).toEqual(["mount-start"]);
+		const instance = DemoMolecule();
 
-		await Promise.resolve();
-		expect(events).toEqual(["mount-start", "mount-resolved"]);
+		expect(events).toEqual([]);
 
-		await Promise.resolve();
-		onUnmount(scope);
-		expect(events).toEqual(["mount-start", "mount-resolved", "cleanup"]);
+		mountMolecule(instance);
+		expect(events).toEqual(["mount"]);
+
+		unmountMolecule(instance);
+		expect(events).toEqual(["mount", "cleanup"]);
+
+		disposeMolecule(instance);
+		expect(events).toEqual(["mount", "cleanup"]);
+	});
+
+	it("throws when called outside molecule setup", () => {
+		expect(() => onMount(() => {})).toThrow(
+			"onMount(...) can only be called synchronously during molecule setup.",
+		);
 	});
 });

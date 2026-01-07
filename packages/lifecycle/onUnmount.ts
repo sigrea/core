@@ -1,30 +1,32 @@
-import { isPromiseLike, logUnhandledAsyncError } from "../core/internal/async";
+import { getActiveMountJobRegistry } from "../core/internal/mountRegistry";
 import type { Cleanup, Scope } from "../core/scope";
-import {
-	disposeScope,
-	getCurrentScope,
-	registerScopeCleanup,
-} from "../core/scope";
+import { getCurrentScope, onDispose } from "../core/scope";
 
-export function onUnmount(scope: Scope): void;
-export function onUnmount(callback: Cleanup): void;
-export function onUnmount(target: Scope | Cleanup): void {
-	if (typeof target === "function") {
-		const scope = getCurrentScope();
-		if (scope === undefined) {
-			// No active scope: execute immediately to avoid dangling cleanup.
-			const result = target();
-			if (isPromiseLike(result)) {
-				Promise.resolve(result).catch((error) => {
-					logUnhandledAsyncError("onUnmount cleanup", error);
-				});
-			}
-			return;
-		}
+const ON_UNMOUNT_OUTSIDE_SCOPE_MESSAGE =
+	"onUnmount(...) can only be called during molecule setup or while a molecule is mounted.";
+const ON_UNMOUNT_MISSING_SCOPE_MESSAGE =
+	"onUnmount(...) was executed with no active scope. Ensure mountMolecule() runs mount jobs with a scope.";
 
-		registerScopeCleanup(target, scope);
+function registerInScope(cleanup: Cleanup, scope: Scope | undefined): void {
+	if (scope === undefined) {
+		throw new Error(ON_UNMOUNT_MISSING_SCOPE_MESSAGE);
+	}
+	onDispose(cleanup, scope);
+}
+
+export function onUnmount(cleanup: Cleanup): void {
+	const registry = getActiveMountJobRegistry();
+	if (registry !== undefined) {
+		registry.register(() => {
+			registerInScope(cleanup, getCurrentScope());
+		});
 		return;
 	}
 
-	disposeScope(target);
+	const scope = getCurrentScope();
+	if (scope === undefined) {
+		throw new Error(ON_UNMOUNT_OUTSIDE_SCOPE_MESSAGE);
+	}
+
+	registerInScope(cleanup, scope);
 }

@@ -25,6 +25,8 @@ import {
 	trackDeepSignalVersion,
 } from "./deepSignal";
 import { isPromiseLike, logUnhandledAsyncError } from "./internal/async";
+import type { MountJobRegistry } from "./internal/mountRegistry";
+import { getActiveMountJobRegistry } from "./internal/mountRegistry";
 import type { ReadonlySignal } from "./readonly";
 import { schedulePostFlush, schedulePreFlush } from "./scheduler";
 import { type Cleanup, getCurrentScope, registerScopeCleanup } from "./scope";
@@ -708,6 +710,56 @@ export function watch(
 	options?: WatchOptions,
 ): WatchStopHandle;
 export function watch(
+	source: unknown,
+	callback?: AnyWatchCallback,
+	options?: WatchOptions,
+): WatchStopHandle {
+	const activeMountJobRegistry = getActiveMountJobRegistry();
+	if (activeMountJobRegistry !== undefined) {
+		return createDeferredWatchStopHandle(
+			activeMountJobRegistry,
+			source,
+			callback,
+			options,
+		);
+	}
+
+	return watchImmediate(source, callback, options);
+}
+
+function createDeferredWatchStopHandle(
+	registry: MountJobRegistry,
+	source: unknown,
+	callback: AnyWatchCallback | undefined,
+	options: WatchOptions | undefined,
+): WatchStopHandle {
+	let stopped = false;
+	let stopHandle: WatchStopHandle | undefined;
+
+	registry.register(() => {
+		if (stopped) {
+			return;
+		}
+		stopHandle = watchImmediate(source, callback, options);
+		const scope = getCurrentScope();
+		if (scope !== undefined) {
+			registerScopeCleanup(() => {
+				stopHandle = undefined;
+			}, scope);
+		}
+	});
+
+	return () => {
+		if (stopped) {
+			return;
+		}
+		stopped = true;
+		stopHandle?.();
+		stopHandle = undefined;
+	};
+}
+
+function watchImmediate(
 	source: unknown,
 	callback?: AnyWatchCallback,
 	options?: WatchOptions,

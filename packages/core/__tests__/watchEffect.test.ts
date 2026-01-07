@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { onMount } from "../../lifecycle/onMount";
-import { onUnmount } from "../../lifecycle/onUnmount";
 import { deepSignal } from "../deepSignal";
 import { nextTick } from "../nextTick";
 import type { Cleanup } from "../scope";
+import { createScope, disposeScope, onDispose, runWithScope } from "../scope";
 import { signal } from "../signal";
 import { watchEffect } from "../watchEffect";
 
@@ -31,17 +30,18 @@ describe("watchEffect", () => {
 		expect(runs).toBe(2);
 	});
 
-	it("tears down automatically when enclosing scope unmounts", async () => {
+	it("tears down automatically when enclosing scope is disposed", async () => {
 		const count = signal(0);
 		let runs = 0;
 
-		const scope = onMount(() => {
+		const scope = createScope();
+		runWithScope(scope, () => {
 			watchEffect(() => {
 				runs += 1;
 				count.value;
 			});
 
-			onUnmount(() => {
+			onDispose(() => {
 				runs += 100;
 			});
 		});
@@ -52,7 +52,7 @@ describe("watchEffect", () => {
 		await nextTick();
 		expect(runs).toBe(2);
 
-		onUnmount(scope);
+		disposeScope(scope);
 		expect(runs).toBe(102);
 
 		count.value = 2;

@@ -1,4 +1,11 @@
-import { type Scope, disposeScope, registerScopeCleanup } from "../core/scope";
+import {
+	type Scope,
+	createScope,
+	disposeScope,
+	onDispose,
+	registerScopeCleanup,
+	runWithScope,
+} from "../core/scope";
 
 import type { MoleculeInstance } from "./types";
 
@@ -61,9 +68,18 @@ export function disposeMoleculeInstance(metadata: MoleculeMetadata): void {
 
 	moleculeMetadataMap.delete(metadata.target);
 
+	const errors: unknown[] = [];
+
+	if (metadata.mountScope !== undefined) {
+		try {
+			unmountMoleculeInstance(metadata);
+		} catch (error) {
+			collectErrors(error, errors);
+		}
+	}
+
 	const children = Array.from(metadata.children);
 	metadata.children.clear();
-	const errors: unknown[] = [];
 
 	for (const child of children) {
 		try {
@@ -95,6 +111,84 @@ export function disposeMolecule<T extends object>(
 	const metadata = getMoleculeMetadata(value);
 	if (metadata !== undefined) {
 		disposeMoleculeInstance(metadata);
+	}
+}
+
+function mountMoleculeInstance(metadata: MoleculeMetadata): void {
+	if (metadata.disposed || metadata.mountScope !== undefined) {
+		return;
+	}
+
+	const parentMountScope = metadata.parent?.mountScope;
+	const mountScope = createScope(parentMountScope);
+	metadata.mountScope = mountScope;
+
+	onDispose(() => {
+		if (metadata.mountScope === mountScope) {
+			metadata.mountScope = undefined;
+		}
+	}, mountScope);
+
+	registerScopeCleanup(() => {
+		disposeScope(mountScope);
+	}, metadata.scope);
+
+	for (const child of metadata.children) {
+		mountMoleculeInstance(child);
+	}
+
+	try {
+		runWithScope(mountScope, () => {
+			for (const job of metadata.mountJobs) {
+				job();
+			}
+		});
+	} catch (error) {
+		try {
+			disposeScope(mountScope);
+		} catch (cleanupError) {
+			const aggregated: unknown[] =
+				cleanupError instanceof AggregateError
+					? [...cleanupError.errors]
+					: [cleanupError];
+			aggregated.push(error);
+			throw new AggregateError(
+				aggregated,
+				"Failed to mount molecule instance; cleanup also encountered errors.",
+			);
+		}
+		throw error;
+	}
+}
+
+function unmountMoleculeInstance(metadata: MoleculeMetadata): void {
+	if (metadata.disposed || metadata.mountScope === undefined) {
+		return;
+	}
+
+	for (const child of metadata.children) {
+		unmountMoleculeInstance(child);
+	}
+
+	const mountScope = metadata.mountScope;
+	disposeScope(mountScope);
+}
+
+export function mountMolecule<T extends object>(
+	value: MoleculeInstance<T>,
+): void {
+	const metadata = getMoleculeMetadata(value);
+	if (metadata !== undefined) {
+		mountMoleculeInstance(metadata);
+	}
+}
+
+export function unmountMolecule<T extends object>(
+	value: MoleculeInstance<T>,
+): void {
+	const metadata = getMoleculeMetadata(value);
+	if (metadata !== undefined) {
+		unmountMoleculeInstance(metadata);
 	}
 }
 

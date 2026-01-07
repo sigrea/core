@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { onUnmount } from "../../lifecycle/onUnmount";
+import { onDispose } from "../../core/scope";
 import { disposeMolecule } from "../internals";
 import { molecule } from "../molecule";
 import { disposeTrackedMolecules, trackMolecule } from "../testing";
@@ -18,7 +18,7 @@ describe("molecule testing utilities", () => {
 		const cleanup = vi.fn();
 
 		const DemoMolecule = molecule(() => {
-			onUnmount(() => {
+			onDispose(() => {
 				cleanup();
 			});
 			return {};
@@ -41,7 +41,7 @@ describe("molecule testing utilities", () => {
 		const cleanup = vi.fn();
 
 		const DemoMolecule = molecule(() => {
-			onUnmount(() => {
+			onDispose(() => {
 				cleanup();
 			});
 			return {};
@@ -59,7 +59,7 @@ describe("molecule testing utilities", () => {
 		const cleanup = vi.fn();
 
 		const DemoMolecule = molecule(() => {
-			onUnmount(() => {
+			onDispose(() => {
 				cleanup();
 			});
 			return {};
@@ -81,7 +81,7 @@ describe("molecule testing utilities", () => {
 			});
 
 			const DemoMolecule = molecule(() => {
-				onUnmount(() => {
+				onDispose(() => {
 					cleanup();
 					throw new Error("teardown failure");
 				});
