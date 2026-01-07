@@ -134,7 +134,7 @@ Use molecules when you need:
 Props are meant to be immutable configuration. Sigrea does not track prop changes.
 If you need dynamic inputs, model them via signals or explicit molecule methods.
 
-Molecule setup is cold.
+Molecule setup only constructs state.
 When `onMount`, `onUnmount`, `watch`, or `watchEffect` are called during setup,
 their work is deferred until the molecule is mounted.
 Official adapters mount and unmount molecules automatically.
