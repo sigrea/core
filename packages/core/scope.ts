@@ -271,13 +271,6 @@ export function getCurrentScope(): Scope | undefined {
 	return activeScope;
 }
 
-export function registerScopeCleanup(
-	cleanup: Cleanup,
-	scope: Scope | undefined = activeScope,
-): () => void {
-	return onDispose(cleanup, scope);
-}
-
 export function onDispose(
 	cleanup: Cleanup,
 	scope: Scope | undefined = activeScope,
@@ -285,7 +278,7 @@ export function onDispose(
 	if (scope === undefined) {
 		// if (__DEV__) {
 		// 	console.warn(
-		// 		"registerScopeCleanup() called with no active scope; cleanup runs immediately.",
+		// 		"onDispose() called with no active scope; cleanup runs immediately.",
 		// 	);
 		// }
 		const errors: unknown[] = [];

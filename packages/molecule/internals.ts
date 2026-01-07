@@ -3,7 +3,6 @@ import {
 	createScope,
 	disposeScope,
 	onDispose,
-	registerScopeCleanup,
 	runWithScope,
 } from "../core/scope";
 
@@ -129,7 +128,7 @@ function mountMoleculeInstance(metadata: MoleculeMetadata): void {
 		}
 	}, mountScope);
 
-	registerScopeCleanup(() => {
+	onDispose(() => {
 		disposeScope(mountScope);
 	}, metadata.scope);
 
@@ -206,7 +205,7 @@ export function linkChildMolecule<T extends object>(
 	if (child.parent === undefined) {
 		child.parent = parent;
 		parent.children.add(child);
-		registerScopeCleanup(() => disposeMoleculeInstance(child), parent.scope);
+		onDispose(() => disposeMoleculeInstance(child), parent.scope);
 	} else if (child.parent !== parent) {
 		throw new Error(
 			"Molecule instance is already linked to a different parent. Create a new instance for each parent molecule.",

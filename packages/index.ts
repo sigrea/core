@@ -37,7 +37,6 @@ export {
 	createScope,
 	runWithScope,
 	getCurrentScope,
-	registerScopeCleanup,
 	onDispose,
 	disposeScope,
 	setScopeCleanupErrorHandler,

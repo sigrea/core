@@ -29,7 +29,7 @@ import type { MountJobRegistry } from "./internal/mountRegistry";
 import { getActiveMountJobRegistry } from "./internal/mountRegistry";
 import type { ReadonlySignal } from "./readonly";
 import { schedulePostFlush, schedulePreFlush } from "./scheduler";
-import { type Cleanup, getCurrentScope, registerScopeCleanup } from "./scope";
+import { type Cleanup, getCurrentScope, onDispose } from "./scope";
 import type { Signal } from "./signal";
 
 export type WatchStopHandle = () => void;
@@ -743,7 +743,7 @@ function createDeferredWatchStopHandle(
 		stopHandle = watchImmediate(source, callback, options);
 		const scope = getCurrentScope();
 		if (scope !== undefined) {
-			registerScopeCleanup(() => {
+			onDispose(() => {
 				stopHandle = undefined;
 			}, scope);
 		}
@@ -770,7 +770,7 @@ function watchImmediate(
 	const scope = getCurrentScope();
 	let detach: (() => void) | undefined;
 	if (scope !== undefined) {
-		detach = registerScopeCleanup(() => {
+		detach = onDispose(() => {
 			watcher.stop();
 		}, scope);
 	}
