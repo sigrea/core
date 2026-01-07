@@ -197,6 +197,16 @@ describe("molecule", () => {
 		expect(cleanup).toHaveBeenCalledTimes(1);
 	});
 
+	it("throws when setup returns a promise", () => {
+		const DemoMolecule = molecule(
+			() => Promise.resolve({}) as unknown as object,
+		);
+
+		expect(() => DemoMolecule()).toThrow(
+			"molecule setup must return an object synchronously",
+		);
+	});
+
 	it("disposeTrackedMolecules tears down every tracked instance", () => {
 		const cleanup = vi.fn();
 
