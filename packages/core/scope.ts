@@ -275,6 +275,13 @@ export function registerScopeCleanup(
 	cleanup: Cleanup,
 	scope: Scope | undefined = activeScope,
 ): () => void {
+	return onDispose(cleanup, scope);
+}
+
+export function onDispose(
+	cleanup: Cleanup,
+	scope: Scope | undefined = activeScope,
+): () => void {
 	if (scope === undefined) {
 		// if (__DEV__) {
 		// 	console.warn(

@@ -38,6 +38,7 @@ export {
 	runWithScope,
 	getCurrentScope,
 	registerScopeCleanup,
+	onDispose,
 	disposeScope,
 	setScopeCleanupErrorHandler,
 	ScopeCleanupErrorResponse,
