@@ -5,6 +5,7 @@ import {
 	deepSignal,
 	disposeMolecule,
 	disposeTrackedMolecules,
+	get,
 	isComputed,
 	isDeepSignal,
 	isMoleculeInstance,
@@ -20,7 +21,6 @@ import {
 	toValue,
 	trackMolecule,
 	unmountMolecule,
-	use,
 	watchEffect,
 } from "..";
 
@@ -89,7 +89,7 @@ describe("public exports", () => {
 		});
 
 		const ParentMolecule = molecule(() => {
-			use(ChildMolecule);
+			get(ChildMolecule);
 			return {};
 		});
 

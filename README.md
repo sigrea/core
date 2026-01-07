@@ -11,13 +11,13 @@ It provides core primitives to build hooks, plus optional lifecycles for ownersh
 - **Core primitives.** `signal`, `computed`, `deepSignal`, `watch`, and `watchEffect`.
 - **Lifecycles.** `Scope`, `onMount`, and `onUnmount` for cleanup boundaries.
 - **Molecules.** `molecule()` is a UI-less lifecycle container.
-- **Composition.** Build molecule trees via `use()`.
+- **Composition.** Build molecule trees via `get()`.
 - **Testing.** `trackMolecule` + `disposeTrackedMolecules` helps reproduce lifecycles in tests.
 
 Inspired by:
 - [Vue 3](https://vuejs.org/) — deep reactivity and scope control
 - [nanostores](https://github.com/nanostores/nanostores) — store-centric architecture
-- [bunshi](https://github.com/saasquatch/bunshi) — molecule and `use()` API design
+- [bunshi](https://github.com/saasquatch/bunshi) — molecule and composition API design
 
 ## Table of Contents
 
@@ -128,7 +128,7 @@ It does not render anything.
 Use molecules when you need:
 
 - a clear ownership + cleanup boundary (`Scope`, `onUnmount`),
-- parent-child relationships between lifecycled units (`use()`),
+- parent-child relationships between lifecycled units (`get()`),
 - per-instance initial configuration via props.
 
 Props are meant to be immutable configuration. Sigrea does not track prop changes.
@@ -162,10 +162,10 @@ const IntervalMolecule = molecule<IntervalMoleculeProps>((props) => {
 });
 ```
 
-### Composing molecules with `use()`
+### Composing molecules with `get()`
 
 ```ts
-import { molecule, readonly, signal, use, watch } from "@sigrea/core";
+import { get, molecule, readonly, signal, watch } from "@sigrea/core";
 
 interface DraftSessionMoleculeProps {
   intervalMs: number;
@@ -188,7 +188,7 @@ export const DraftSessionMolecule = molecule<DraftSessionMoleculeProps>(
       isDirty.value = false;
     };
 
-    const interval = use(IntervalMolecule, {
+    const interval = get(IntervalMolecule, {
       intervalMs: props.intervalMs,
     });
 
@@ -211,9 +211,9 @@ export const DraftSessionMolecule = molecule<DraftSessionMoleculeProps>(
 
 Notes:
 
-- `use()` must be called synchronously during molecule setup.
+- `get()` must be called synchronously during molecule setup.
 - `onUnmount()` callbacks and `watch()` effects are tied to the molecule scope.
-- Child molecules created via `use()` are disposed with their parent.
+- Child molecules created via `get()` are disposed with their parent.
 
 ## Testing
 

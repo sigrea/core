@@ -84,11 +84,11 @@ packages/
 5. **Scope lifecycle** (`packages/core/scope.ts`)
    - `Scope` class manages tree structure of cleanup callbacks
    - `createScope()`, `runWithScope()`, `disposeScope()` control effect and watcher lifecycles
-   - `registerScopeCleanup(fn)` for automatic cleanup registration
+   - `onDispose(fn)` for automatic cleanup registration
 
 6. **Molecule factories** (`packages/molecule/molecule.ts`)
    - `molecule<TProps>((props) => { ... })` pattern
-   - Each molecule instance owns its own Scope; during setup execution, `use(ChildMolecule, props)` retrieves and links child molecule
+   - Each molecule instance owns its own Scope; during setup execution, `get(ChildMolecule, props)` retrieves and links child molecule
    - `disposeMolecule()` for cleanup, `trackMolecule()` / `disposeTrackedMolecules()` for test tracking
 
 ### Design Principles

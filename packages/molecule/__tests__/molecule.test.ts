@@ -4,10 +4,10 @@ import { computed } from "../../core/computed";
 import { onDispose } from "../../core/scope";
 import { signal } from "../../core/signal";
 import { onMount } from "../../lifecycle/onMount";
+import { get } from "../get";
 import { disposeMolecule, mountMolecule, unmountMolecule } from "../internals";
 import { molecule } from "../molecule";
 import { disposeTrackedMolecules, trackMolecule } from "../testing";
-import { use } from "../use";
 
 afterEach(() => {
 	disposeTrackedMolecules();
@@ -89,7 +89,7 @@ describe("molecule", () => {
 		});
 
 		const ParentMolecule = molecule(() => {
-			use(ChildMolecule);
+			get(ChildMolecule);
 			return {};
 		});
 
@@ -148,7 +148,7 @@ describe("molecule", () => {
 		});
 
 		const ParentMolecule = molecule(() => {
-			use(ChildMolecule);
+			get(ChildMolecule);
 			onMount(() => {
 				events.push("parent-mount");
 				return () => {
@@ -173,14 +173,14 @@ describe("molecule", () => {
 		]);
 	});
 
-	it("passes props to child molecule instances via use", () => {
+	it("passes props to child molecule instances via get", () => {
 		const ChildMolecule = molecule((props: { id: number }) => {
 			const identifier = signal(props.id);
 			return { identifier };
 		});
 
 		const ParentMolecule = molecule((props: { childId: number }) => {
-			const child = use(ChildMolecule, { id: props.childId });
+			const child = get(ChildMolecule, { id: props.childId });
 			return { child };
 		});
 
@@ -189,11 +189,11 @@ describe("molecule", () => {
 		expect(parent.child.identifier.value).toBe(42);
 	});
 
-	it("throws when use is called outside molecule setup", () => {
+	it("throws when get is called outside molecule setup", () => {
 		const ChildMolecule = molecule(() => ({}));
 
-		expect(() => use(ChildMolecule)).toThrow(
-			"use(...) can only be called synchronously during molecule setup.",
+		expect(() => get(ChildMolecule)).toThrow(
+			"get(...) can only be called synchronously during molecule setup.",
 		);
 	});
 });
