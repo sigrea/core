@@ -1,4 +1,4 @@
-// import { __DEV__ } from "../../constants";
+import { __DEV__ } from "../../constants";
 
 export function isPromiseLike<T = unknown>(
 	value: unknown,
@@ -11,7 +11,9 @@ export function isPromiseLike<T = unknown>(
 }
 
 export function logUnhandledAsyncError(source: string, error: unknown): void {
-	// if (__DEV__) {
-	// 	console.error(`${source} rejected.`, error);
-	// }
+	if (!__DEV__) {
+		return;
+	}
+	// eslint-disable-next-line no-console
+	console.error(`${source} rejected.`, error);
 }
