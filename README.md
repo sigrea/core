@@ -307,6 +307,7 @@ In Node.js, Sigrea uses `process.env.NODE_ENV !== "production"`.
 
 In browsers, you can override this at build time by defining a global constant
 `__SIGREA_DEV__` with your bundler.
+If you don't define it, `__DEV__` defaults to `false` in browsers.
 
 Vite example:
 
@@ -316,7 +317,7 @@ import { defineConfig } from "vite";
 
 export default defineConfig(({ command }) => ({
   define: {
-    __SIGREA_DEV__: JSON.stringify(command === "serve"),
+    __SIGREA_DEV__: command === "serve",
   },
 }));
 ```
