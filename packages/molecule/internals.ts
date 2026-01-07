@@ -5,6 +5,8 @@ import type { MoleculeInstance } from "./types";
 export interface MoleculeMetadata {
 	target: object;
 	scope: Scope;
+	mountScope?: Scope;
+	mountJobs: Array<() => void>;
 	disposed: boolean;
 	parent?: MoleculeMetadata;
 	children: Set<MoleculeMetadata>;
@@ -28,6 +30,7 @@ export function createMetadata(scope: Scope): MoleculeMetadata {
 		// Temporary placeholder; will be set in finalizeMetadata.
 		target: {} as object,
 		scope,
+		mountJobs: [],
 		disposed: false,
 		children: new Set(),
 	};

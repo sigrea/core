@@ -1,3 +1,8 @@
+import type { MountJobRegistry } from "../core/internal/mountRegistry";
+import {
+	popMountJobRegistry,
+	pushMountJobRegistry,
+} from "../core/internal/mountRegistry";
 import { createScope, disposeScope, runWithScope } from "../core/scope";
 
 import {
@@ -24,14 +29,21 @@ function createMoleculeFactory<TReturn extends object, TProps>(
 		const props = resolveProps(args);
 		const scope = createScope();
 		const metadata = createMetadata(scope);
+		const mountRegistry: MountJobRegistry = {
+			register(job) {
+				metadata.mountJobs.push(job);
+			},
+		};
 
 		try {
 			const moleculeInstance = runWithScope(scope, () => {
 				pushActiveMoleculeMetadata(metadata);
+				pushMountJobRegistry(mountRegistry);
 				try {
 					const instance = ensureSetupResult(setup(props));
 					return instance;
 				} finally {
+					popMountJobRegistry(mountRegistry);
 					popActiveMoleculeMetadata(metadata);
 				}
 			});
