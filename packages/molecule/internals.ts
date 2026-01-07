@@ -128,10 +128,6 @@ function mountMoleculeInstance(metadata: MoleculeMetadata): void {
 		}
 	}, mountScope);
 
-	onDispose(() => {
-		disposeScope(mountScope);
-	}, metadata.scope);
-
 	for (const child of metadata.children) {
 		mountMoleculeInstance(child);
 	}
@@ -161,7 +157,7 @@ function mountMoleculeInstance(metadata: MoleculeMetadata): void {
 }
 
 function unmountMoleculeInstance(metadata: MoleculeMetadata): void {
-	if (metadata.disposed || metadata.mountScope === undefined) {
+	if (metadata.mountScope === undefined) {
 		return;
 	}
 
