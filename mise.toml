@@ -32,6 +32,12 @@ depends = ["ci"]
 confirm = "Create release commit + tag (minor) on main?"
 run = 'test "$(git rev-parse --abbrev-ref HEAD)" = "main" && pnpm exec changelogen --clean --release --minor'
 
+[tasks.release_major]
+description = "Cut release commit + tag (force major)"
+depends = ["ci"]
+confirm = "Create release commit + tag (major) on main?"
+run = 'test "$(git rev-parse --abbrev-ref HEAD)" = "main" && pnpm exec changelogen --clean --release --major'
+
 [tasks.push_release]
 description = "Push main + tags (triggers publish.yml)"
 confirm = "Push main and tags to origin?"
