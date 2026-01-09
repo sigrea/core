@@ -46,11 +46,11 @@ Sigrea builds on alien-signals to provide Vue-style deep reactivity in a framewo
 ```
 packages/
   core/                # Core primitives: signal, computed, watch, scope
-    reactivity/        # track/trigger infrastructure and proxy handlers
+    reactiveObject/    # Proxy-based deepSignal helpers (createReactiveObject + handlers)
       handlers/        # base, array, collection, readonly, shallow, mutable
     __tests__/
-  lifecycle/           # onMount, onUnmount hooks
   molecule/             # molecule factory, disposeMolecule, trackMolecule, disposeTrackedMolecules
+    lifecycle/         # onMount, onUnmount hooks (molecule mount/unmount lifecycle)
   __tests__/           # Cross-package tests
   index.ts             # Single entry point
 ```
@@ -63,7 +63,7 @@ packages/
    - `Dep` is `SignalNode<number>` type representing dependencies on each property
    - `batch()` and `flush()` provide queue-driven scheduling
 
-2. **Proxy handlers** (`packages/core/reactivity/handlers/`)
+2. **Proxy handlers** (`packages/core/reactiveObject/handlers/`)
    - `base.ts`: Base handler containing common `track()`/`trigger()` plumbing
    - `array.ts`: Intercepts array operations (push, pop, length, etc.) and adds INTEGER_KEY and length tracking
    - `collection.ts`: Intercepts Map, Set, WeakMap, WeakSet using dedicated `ITERATE_KEY`/`MAP_KEY_ITERATE_KEY`
@@ -84,18 +84,18 @@ packages/
 5. **Scope lifecycle** (`packages/core/scope.ts`)
    - `Scope` class manages tree structure of cleanup callbacks
    - `createScope()`, `runWithScope()`, `disposeScope()` control effect and watcher lifecycles
-   - `registerScopeCleanup(fn)` for automatic cleanup registration
+   - `onDispose(fn)` for automatic cleanup registration
 
 6. **Molecule factories** (`packages/molecule/molecule.ts`)
    - `molecule<TProps>((props) => { ... })` pattern
-   - Each molecule instance owns its own Scope; during setup execution, `use(ChildMolecule, props)` retrieves and links child molecule
+   - Each molecule instance owns its own Scope; during setup execution, `get(ChildMolecule, props)` retrieves and links child molecule
    - `disposeMolecule()` for cleanup, `trackMolecule()` / `disposeTrackedMolecules()` for test tracking
 
 ### Design Principles
 
 - **Delegation to alien-signals**: Low-level scheduling and dependency tracking are delegated to alien-signals; Sigrea focuses on proxy handlers, scope management, and molecule factories
 - **Handler integration**: Integrates track/trigger calls into proxy handlers; deepSignal detects nested object and collection changes with fine granularity
-- **Vue-style lifecycle**: `onMount`/`onUnmount` are implemented based on Scope, independent of host renderer
+- **Vue-style lifecycle**: `onMount`/`onUnmount` are implemented as molecule mount/unmount hooks, independent of host renderer
 - **Single entry point**: `packages/index.ts` consolidates all exports, generating dual CJS/ESM bundles
 
 ## Coding Conventions

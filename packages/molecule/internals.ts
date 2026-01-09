@@ -1,10 +1,18 @@
-import { type Scope, disposeScope, registerScopeCleanup } from "../core/scope";
+import {
+	type Scope,
+	createScope,
+	disposeScope,
+	onDispose,
+	runWithScope,
+} from "../core/scope";
 
 import type { MoleculeInstance } from "./types";
 
 export interface MoleculeMetadata {
 	target: object;
 	scope: Scope;
+	mountScope?: Scope;
+	mountJobs: Array<() => void>;
 	disposed: boolean;
 	parent?: MoleculeMetadata;
 	children: Set<MoleculeMetadata>;
@@ -28,6 +36,7 @@ export function createMetadata(scope: Scope): MoleculeMetadata {
 		// Temporary placeholder; will be set in finalizeMetadata.
 		target: {} as object,
 		scope,
+		mountJobs: [],
 		disposed: false,
 		children: new Set(),
 	};
@@ -58,9 +67,18 @@ export function disposeMoleculeInstance(metadata: MoleculeMetadata): void {
 
 	moleculeMetadataMap.delete(metadata.target);
 
+	const errors: unknown[] = [];
+
+	if (metadata.mountScope !== undefined) {
+		try {
+			unmountMoleculeInstance(metadata);
+		} catch (error) {
+			collectErrors(error, errors);
+		}
+	}
+
 	const children = Array.from(metadata.children);
 	metadata.children.clear();
-	const errors: unknown[] = [];
 
 	for (const child of children) {
 		try {
@@ -95,6 +113,80 @@ export function disposeMolecule<T extends object>(
 	}
 }
 
+function mountMoleculeInstance(metadata: MoleculeMetadata): void {
+	if (metadata.disposed || metadata.mountScope !== undefined) {
+		return;
+	}
+
+	const parentMountScope = metadata.parent?.mountScope;
+	const mountScope = createScope(parentMountScope);
+	metadata.mountScope = mountScope;
+
+	onDispose(() => {
+		if (metadata.mountScope === mountScope) {
+			metadata.mountScope = undefined;
+		}
+	}, mountScope);
+
+	try {
+		for (const child of metadata.children) {
+			mountMoleculeInstance(child);
+		}
+
+		runWithScope(mountScope, () => {
+			for (const job of metadata.mountJobs) {
+				job();
+			}
+		});
+	} catch (error) {
+		try {
+			disposeScope(mountScope);
+		} catch (cleanupError) {
+			const aggregated: unknown[] =
+				cleanupError instanceof AggregateError
+					? [...cleanupError.errors]
+					: [cleanupError];
+			aggregated.push(error);
+			throw new AggregateError(
+				aggregated,
+				"Failed to mount molecule instance; cleanup also encountered errors.",
+			);
+		}
+		throw error;
+	}
+}
+
+function unmountMoleculeInstance(metadata: MoleculeMetadata): void {
+	if (metadata.mountScope === undefined) {
+		return;
+	}
+
+	for (const child of metadata.children) {
+		unmountMoleculeInstance(child);
+	}
+
+	const mountScope = metadata.mountScope;
+	disposeScope(mountScope);
+}
+
+export function mountMolecule<T extends object>(
+	value: MoleculeInstance<T>,
+): void {
+	const metadata = getMoleculeMetadata(value);
+	if (metadata !== undefined) {
+		mountMoleculeInstance(metadata);
+	}
+}
+
+export function unmountMolecule<T extends object>(
+	value: MoleculeInstance<T>,
+): void {
+	const metadata = getMoleculeMetadata(value);
+	if (metadata !== undefined) {
+		unmountMoleculeInstance(metadata);
+	}
+}
+
 export function linkChildMolecule<T extends object>(
 	parent: MoleculeMetadata,
 	child: MoleculeMetadata,
@@ -109,7 +201,7 @@ export function linkChildMolecule<T extends object>(
 	if (child.parent === undefined) {
 		child.parent = parent;
 		parent.children.add(child);
-		registerScopeCleanup(() => disposeMoleculeInstance(child), parent.scope);
+		onDispose(() => disposeMoleculeInstance(child), parent.scope);
 	} else if (child.parent !== parent) {
 		throw new Error(
 			"Molecule instance is already linked to a different parent. Create a new instance for each parent molecule.",

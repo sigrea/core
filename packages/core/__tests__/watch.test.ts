@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { onMount } from "../../lifecycle/onMount";
-import { onUnmount } from "../../lifecycle/onUnmount";
 import { computed } from "../computed";
 import { deepSignal } from "../deepSignal";
 import { nextTick } from "../nextTick";
 import { TrackOpType, TriggerOpType } from "../reactivity";
 import { readonly } from "../readonly";
 import type { Cleanup } from "../scope";
+import { createScope, disposeScope, onDispose, runWithScope } from "../scope";
 import { signal } from "../signal";
 import { watch } from "../watch";
 
@@ -433,11 +432,12 @@ describe("watch", () => {
 		stop();
 	});
 
-	it("cleans up automatically when scope is unmounted", async () => {
+	it("cleans up automatically when scope is disposed", async () => {
 		const count = signal(0);
 		let runs = 0;
 
-		const scope = onMount(() => {
+		const scope = createScope();
+		runWithScope(scope, () => {
 			watch(
 				count,
 				() => {
@@ -446,7 +446,7 @@ describe("watch", () => {
 				{ immediate: true },
 			);
 
-			onUnmount(() => {
+			onDispose(() => {
 				runs += 100;
 			});
 		});
@@ -457,7 +457,7 @@ describe("watch", () => {
 		await nextTick();
 		expect(runs).toBe(2);
 
-		onUnmount(scope);
+		disposeScope(scope);
 		expect(runs).toBe(102);
 
 		count.value = 2;

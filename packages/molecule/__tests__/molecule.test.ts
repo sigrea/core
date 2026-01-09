@@ -1,13 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { computed } from "../../core/computed";
+import { nextTick } from "../../core/nextTick";
+import { onDispose } from "../../core/scope";
 import { signal } from "../../core/signal";
-import { onMount } from "../../lifecycle/onMount";
-import { onUnmount } from "../../lifecycle/onUnmount";
-import { disposeMolecule } from "../internals";
+import { watch } from "../../core/watch";
+import { watchEffect } from "../../core/watchEffect";
+import { get } from "../get";
+import { disposeMolecule, mountMolecule, unmountMolecule } from "../internals";
+import { onMount } from "../lifecycle/onMount";
 import { molecule } from "../molecule";
 import { disposeTrackedMolecules, trackMolecule } from "../testing";
-import { use } from "../use";
 
 afterEach(() => {
 	disposeTrackedMolecules();
@@ -48,11 +51,13 @@ describe("molecule", () => {
 		expect(instance.count.value).toBe(3);
 	});
 
-	it("runs onUnmount cleanups when molecule is disposed", () => {
+	it("runs onMount callbacks when mounted and runs returned cleanups on dispose", () => {
 		const cleanup = vi.fn();
+		const mounts = vi.fn();
 
 		const DemoMolecule = molecule(() => {
 			onMount(() => {
+				mounts();
 				return () => {
 					cleanup();
 				};
@@ -64,6 +69,11 @@ describe("molecule", () => {
 		const instance = DemoMolecule();
 		trackMolecule(instance);
 
+		expect(mounts).not.toHaveBeenCalled();
+		expect(cleanup).not.toHaveBeenCalled();
+
+		mountMolecule(instance);
+		expect(mounts).toHaveBeenCalledTimes(1);
 		expect(cleanup).not.toHaveBeenCalled();
 
 		disposeMolecule(instance);
@@ -71,18 +81,96 @@ describe("molecule", () => {
 		expect(cleanup).toHaveBeenCalledTimes(1);
 	});
 
+	it("defers watchEffect until the molecule is mounted", async () => {
+		const runs: number[] = [];
+
+		const DemoMolecule = molecule(() => {
+			const count = signal(0);
+
+			watchEffect(() => {
+				runs.push(count.value);
+			});
+
+			return { count };
+		});
+
+		const instance = DemoMolecule();
+		trackMolecule(instance);
+
+		expect(runs).toEqual([]);
+
+		instance.count.value = 1;
+		await nextTick();
+		expect(runs).toEqual([]);
+
+		mountMolecule(instance);
+		expect(runs).toEqual([1]);
+
+		instance.count.value = 2;
+		await nextTick();
+		expect(runs).toEqual([1, 2]);
+
+		unmountMolecule(instance);
+
+		instance.count.value = 3;
+		await nextTick();
+		expect(runs).toEqual([1, 2]);
+
+		mountMolecule(instance);
+		expect(runs).toEqual([1, 2, 3]);
+	});
+
+	it("defers watch until mounted and preserves immediate behavior on mount", async () => {
+		const values: number[] = [];
+
+		const DemoMolecule = molecule(() => {
+			const count = signal(0);
+
+			watch(
+				() => count.value,
+				(value) => {
+					values.push(value);
+				},
+				{ immediate: true },
+			);
+
+			return { count };
+		});
+
+		const instance = DemoMolecule();
+		trackMolecule(instance);
+
+		expect(values).toEqual([]);
+
+		mountMolecule(instance);
+		expect(values).toEqual([0]);
+
+		instance.count.value = 1;
+		await nextTick();
+		expect(values).toEqual([0, 1]);
+
+		unmountMolecule(instance);
+
+		instance.count.value = 2;
+		await nextTick();
+		expect(values).toEqual([0, 1]);
+
+		mountMolecule(instance);
+		expect(values).toEqual([0, 1, 2]);
+	});
+
 	it("disposes child molecule when the parent is cleaned up", () => {
 		const childCleanup = vi.fn();
 
 		const ChildMolecule = molecule(() => {
-			onUnmount(() => {
+			onDispose(() => {
 				childCleanup();
 			});
 			return {};
 		});
 
 		const ParentMolecule = molecule(() => {
-			use(ChildMolecule);
+			get(ChildMolecule);
 			return {};
 		});
 
@@ -98,10 +186,8 @@ describe("molecule", () => {
 		const cleanup = vi.fn();
 
 		const DemoMolecule = molecule(() => {
-			onMount(() => {
-				return () => {
-					cleanup();
-				};
+			onDispose(() => {
+				cleanup();
 			});
 
 			throw new Error("boom");
@@ -111,11 +197,21 @@ describe("molecule", () => {
 		expect(cleanup).toHaveBeenCalledTimes(1);
 	});
 
+	it("throws when setup returns a promise", () => {
+		const DemoMolecule = molecule(
+			() => Promise.resolve({}) as unknown as object,
+		);
+
+		expect(() => DemoMolecule()).toThrow(
+			"molecule setup must return an object synchronously",
+		);
+	});
+
 	it("disposeTrackedMolecules tears down every tracked instance", () => {
 		const cleanup = vi.fn();
 
 		const DemoMolecule = molecule(() => {
-			onUnmount(() => {
+			onDispose(() => {
 				cleanup();
 			});
 			return {};
@@ -129,14 +225,53 @@ describe("molecule", () => {
 		expect(cleanup).toHaveBeenCalledTimes(2);
 	});
 
-	it("passes props to child molecule instances via use", () => {
+	it("mounts and unmounts child molecules along the parent molecule", () => {
+		const events: string[] = [];
+
+		const ChildMolecule = molecule(() => {
+			onMount(() => {
+				events.push("child-mount");
+				return () => {
+					events.push("child-unmount");
+				};
+			});
+			return {};
+		});
+
+		const ParentMolecule = molecule(() => {
+			get(ChildMolecule);
+			onMount(() => {
+				events.push("parent-mount");
+				return () => {
+					events.push("parent-unmount");
+				};
+			});
+			return {};
+		});
+
+		const parent = ParentMolecule();
+		trackMolecule(parent);
+
+		mountMolecule(parent);
+		expect(events).toEqual(["child-mount", "parent-mount"]);
+
+		unmountMolecule(parent);
+		expect(events).toEqual([
+			"child-mount",
+			"parent-mount",
+			"child-unmount",
+			"parent-unmount",
+		]);
+	});
+
+	it("passes props to child molecule instances via get", () => {
 		const ChildMolecule = molecule((props: { id: number }) => {
 			const identifier = signal(props.id);
 			return { identifier };
 		});
 
 		const ParentMolecule = molecule((props: { childId: number }) => {
-			const child = use(ChildMolecule, { id: props.childId });
+			const child = get(ChildMolecule, { id: props.childId });
 			return { child };
 		});
 
@@ -145,11 +280,11 @@ describe("molecule", () => {
 		expect(parent.child.identifier.value).toBe(42);
 	});
 
-	it("throws when use is called outside molecule setup", () => {
+	it("throws when get is called outside molecule setup", () => {
 		const ChildMolecule = molecule(() => ({}));
 
-		expect(() => use(ChildMolecule)).toThrow(
-			"use(...) can only be called synchronously during molecule setup.",
+		expect(() => get(ChildMolecule)).toThrow(
+			"get(...) can only be called synchronously during molecule setup.",
 		);
 	});
 });

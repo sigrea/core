@@ -5,7 +5,7 @@ import {
 	createScope,
 	disposeScope,
 	getCurrentScope,
-	registerScopeCleanup,
+	onDispose,
 	runWithScope,
 	setScopeCleanupErrorHandler,
 } from "../scope";
@@ -39,12 +39,12 @@ describe("reactivity scope", () => {
 		const invoked: string[] = [];
 
 		runWithScope(childScope, () => {
-			registerScopeCleanup(() => {
+			onDispose(() => {
 				invoked.push("child");
 			});
 		});
 
-		registerScopeCleanup(() => {
+		onDispose(() => {
 			invoked.push("root");
 		}, rootScope);
 
@@ -58,7 +58,7 @@ describe("reactivity scope", () => {
 		disposeScope(scope);
 
 		let called = false;
-		registerScopeCleanup(() => {
+		onDispose(() => {
 			called = true;
 		}, scope);
 
@@ -72,14 +72,14 @@ describe("reactivity scope", () => {
 			const order: string[] = [];
 
 			runWithScope(scope, () => {
-				registerScopeCleanup(() => {
+				onDispose(() => {
 					order.push("first");
 				});
-				registerScopeCleanup(() => {
+				onDispose(() => {
 					order.push("second");
 					throw new Error("second failure");
 				});
-				registerScopeCleanup(() => {
+				onDispose(() => {
 					order.push("third");
 					throw new Error("third failure");
 				});
@@ -105,6 +105,30 @@ describe("reactivity scope", () => {
 		}
 	});
 
+	it("handles async cleanup rejections without triggering unhandledRejection", async () => {
+		const errorSpy = suppressConsoleError();
+		const unhandled = vi.fn();
+		process.on("unhandledRejection", unhandled);
+
+		try {
+			const scope = createScope();
+			runWithScope(scope, () => {
+				onDispose(() => Promise.reject(new Error("async failure")));
+			});
+
+			disposeScope(scope);
+
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(unhandled).not.toHaveBeenCalled();
+			expect(errorSpy).toHaveBeenCalled();
+		} finally {
+			process.off("unhandledRejection", unhandled);
+			errorSpy.mockRestore();
+		}
+	});
+
 	it("propagates cleanup errors when handler requests it", () => {
 		const scope = createScope();
 		const failure = new Error("boom");
@@ -112,7 +136,7 @@ describe("reactivity scope", () => {
 		setScopeCleanupErrorHandler(() => ScopeCleanupErrorResponse.Propagate);
 
 		runWithScope(scope, () => {
-			registerScopeCleanup(() => {
+			onDispose(() => {
 				throw failure;
 			});
 		});
@@ -125,7 +149,7 @@ describe("reactivity scope", () => {
 
 		const scope = createScope();
 		runWithScope(scope, () => {
-			registerScopeCleanup(() => {
+			onDispose(() => {
 				throw new Error("should be suppressed");
 			});
 		});
@@ -137,7 +161,7 @@ describe("reactivity scope", () => {
 		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 		let runs = 0;
 
-		registerScopeCleanup(() => {
+		onDispose(() => {
 			runs += 1;
 		});
 
@@ -152,7 +176,7 @@ describe("reactivity scope", () => {
 		try {
 			const failure = new Error("immediate failure");
 			expect(() =>
-				registerScopeCleanup(() => {
+				onDispose(() => {
 					throw failure;
 				}),
 			).toThrow(AggregateError);
@@ -171,7 +195,7 @@ describe("reactivity scope", () => {
 		setScopeCleanupErrorHandler(() => ScopeCleanupErrorResponse.Propagate);
 
 		expect(() =>
-			registerScopeCleanup(() => {
+			onDispose(() => {
 				throw failure;
 			}, scope),
 		).toThrow(failure);

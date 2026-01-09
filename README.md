@@ -10,14 +10,14 @@ It provides core primitives to build hooks, plus optional lifecycles for ownersh
 
 - **Core primitives.** `signal`, `computed`, `deepSignal`, `watch`, and `watchEffect`.
 - **Lifecycles.** `Scope`, `onMount`, and `onUnmount` for cleanup boundaries.
-- **Molecules.** `molecule()` is a UI-less lifecycle container.
-- **Composition.** Build molecule trees via `use()`.
+- **Molecules.** `molecule()` is a lifecycle container that doesn't render UI.
+- **Composition.** Build molecule trees via `get()`.
 - **Testing.** `trackMolecule` + `disposeTrackedMolecules` helps reproduce lifecycles in tests.
 
 Inspired by:
 - [Vue 3](https://vuejs.org/) — deep reactivity and scope control
 - [nanostores](https://github.com/nanostores/nanostores) — store-centric architecture
-- [bunshi](https://github.com/saasquatch/bunshi) — molecule and `use()` API design
+- [bunshi](https://github.com/saasquatch/bunshi) — molecule and composition API design
 
 ## Table of Contents
 
@@ -41,8 +41,8 @@ npm install @sigrea/core
 
 Official adapters connect Sigrea molecules and signals to UI frameworks:
 
-- **[@sigrea/vue](https://github.com/sigrea/vue)** — Vue 3.4+ composables (`useMolcule`, `useSignal`, `useMutableSignal`, `useDeepSignal`)
-- **[@sigrea/react](https://github.com/sigrea/react)** — React 18+ hooks (`useMolcule`, `useSignal`, `useComputed`, `useDeepSignal`)
+- **[@sigrea/vue](https://github.com/sigrea/vue)** — Vue 3.4+ composables (`useMolecule`, `useSignal`, `useMutableSignal`, `useDeepSignal`)
+- **[@sigrea/react](https://github.com/sigrea/react)** — React 18+ hooks (`useMolecule`, `useSignal`, `useComputed`, `useDeepSignal`)
 
 Each adapter binds molecule lifecycles to component lifecycles and synchronizes signal subscriptions with the framework's reactivity system.
 
@@ -128,8 +128,17 @@ It does not render anything.
 Use molecules when you need:
 
 - a clear ownership + cleanup boundary (`Scope`, `onUnmount`),
-- parent-child relationships between lifecycled units (`use()`),
-- per-instance configuration via props.
+- parent-child relationships between lifecycled units (`get()`),
+- per-instance initial configuration via props.
+
+Props are meant to be immutable configuration. Sigrea does not track prop changes.
+If you need dynamic inputs, model them via signals or explicit molecule methods.
+
+Molecule setup only constructs state.
+When `onMount`, `onUnmount`, `watch`, or `watchEffect` are called during setup,
+their work is deferred until the molecule is mounted.
+Official adapters mount and unmount molecules automatically.
+If you use the core package directly, call `mountMolecule()` and `unmountMolecule()`.
 
 Inside `setup`, you can call hooks or use the core primitives directly.
 Child molecules are internal dependencies—prefer returning only the outputs
@@ -138,7 +147,7 @@ Child molecules are internal dependencies—prefer returning only the outputs
 ### Creating a molecule
 
 ```ts
-import { molecule, onUnmount, readonly, signal } from "@sigrea/core";
+import { molecule, onMount, onUnmount, readonly, signal } from "@sigrea/core";
 
 interface IntervalMoleculeProps {
   intervalMs: number;
@@ -146,12 +155,20 @@ interface IntervalMoleculeProps {
 
 const IntervalMolecule = molecule<IntervalMoleculeProps>((props) => {
   const tick = signal(0);
+  let id: ReturnType<typeof setInterval> | undefined;
 
-  const id = setInterval(() => {
-    tick.value += 1;
-  }, props.intervalMs);
+  onMount(() => {
+    id = setInterval(() => {
+      tick.value += 1;
+    }, props.intervalMs);
+  });
 
-  onUnmount(() => clearInterval(id));
+  onUnmount(() => {
+    if (id === undefined) {
+      return;
+    }
+    clearInterval(id);
+  });
 
   return {
     tick: readonly(tick),
@@ -159,10 +176,10 @@ const IntervalMolecule = molecule<IntervalMoleculeProps>((props) => {
 });
 ```
 
-### Composing molecules with `use()`
+### Composing molecules with `get()`
 
 ```ts
-import { molecule, readonly, signal, use, watch } from "@sigrea/core";
+import { get, molecule, readonly, signal, watch } from "@sigrea/core";
 
 interface DraftSessionMoleculeProps {
   intervalMs: number;
@@ -185,7 +202,7 @@ export const DraftSessionMolecule = molecule<DraftSessionMoleculeProps>(
       isDirty.value = false;
     };
 
-    const interval = use(IntervalMolecule, {
+    const interval = get(IntervalMolecule, {
       intervalMs: props.intervalMs,
     });
 
@@ -208,9 +225,9 @@ export const DraftSessionMolecule = molecule<DraftSessionMoleculeProps>(
 
 Notes:
 
-- `use()` must be called synchronously during molecule setup.
-- `onUnmount()` callbacks and `watch()` effects are tied to the molecule scope.
-- Child molecules created via `use()` are disposed with their parent.
+- `get()` must be called synchronously during molecule setup.
+- `onUnmount()` callbacks and `watch()` effects are tied to the mount lifecycle.
+- Child molecules created via `get()` are disposed with their parent.
 
 ## Testing
 
@@ -255,6 +272,10 @@ it("increments and exposes derived state", () => {
 Cleanup callbacks run when a scope is disposed.
 If a cleanup throws, Sigrea collects errors into an `AggregateError`.
 
+Async cleanups are not awaited.
+If an async cleanup rejects, Sigrea forwards the error to the handler (if any).
+In dev, Sigrea also logs the rejection.
+
 Use `setScopeCleanupErrorHandler` to customize error handling.
 This is useful for logging or reporting to monitoring services.
 
@@ -282,6 +303,28 @@ Return `ScopeCleanupErrorResponse.Propagate` to rethrow immediately for synchron
 ## Development
 
 This repo targets Node.js 20 or later.
+
+### Browser dev flag
+
+Some dev-only diagnostics are guarded by `__DEV__`.
+In Node.js, Sigrea uses `process.env.NODE_ENV !== "production"`.
+
+In browsers, you can override this at build time by defining a global constant
+`__SIGREA_DEV__` with your bundler.
+If you don't define it, `__DEV__` defaults to `false` in browsers.
+
+Vite example:
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite";
+
+export default defineConfig(({ command }) => ({
+  define: {
+    __SIGREA_DEV__: command === "serve",
+  },
+}));
+```
 
 If you use mise:
 

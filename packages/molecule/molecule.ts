@@ -1,3 +1,9 @@
+import { isPromiseLike } from "../core/internal/async";
+import type { MountJobRegistry } from "../core/internal/mountRegistry";
+import {
+	popMountJobRegistry,
+	pushMountJobRegistry,
+} from "../core/internal/mountRegistry";
 import { createScope, disposeScope, runWithScope } from "../core/scope";
 
 import {
@@ -10,6 +16,8 @@ import type { MoleculeArgs, MoleculeFactory, MoleculeInstance } from "./types";
 
 const INVALID_SETUP_RETURN_MESSAGE =
 	"molecule setup must return an object containing the public API.";
+const INVALID_ASYNC_SETUP_RETURN_MESSAGE =
+	"molecule setup must return an object synchronously. Async setup is not supported.";
 
 export function molecule<TProps = void, TReturn extends object = object>(
 	setup: (props: TProps) => TReturn,
@@ -24,14 +32,21 @@ function createMoleculeFactory<TReturn extends object, TProps>(
 		const props = resolveProps(args);
 		const scope = createScope();
 		const metadata = createMetadata(scope);
+		const mountRegistry: MountJobRegistry = {
+			register(job) {
+				metadata.mountJobs.push(job);
+			},
+		};
 
 		try {
 			const moleculeInstance = runWithScope(scope, () => {
 				pushActiveMoleculeMetadata(metadata);
+				pushMountJobRegistry(mountRegistry);
 				try {
 					const instance = ensureSetupResult(setup(props));
 					return instance;
 				} finally {
+					popMountJobRegistry(mountRegistry);
 					popActiveMoleculeMetadata(metadata);
 				}
 			});
@@ -68,6 +83,9 @@ function resolveProps<TProps>(args: MoleculeArgs<TProps>): TProps {
 function ensureSetupResult<TReturn extends object>(
 	value: TReturn | null | undefined,
 ): TReturn {
+	if (isPromiseLike(value)) {
+		throw new TypeError(INVALID_ASYNC_SETUP_RETURN_MESSAGE);
+	}
 	if (value === null || typeof value !== "object") {
 		throw new TypeError(INVALID_SETUP_RETURN_MESSAGE);
 	}

@@ -1,5 +1,5 @@
-// import { __DEV__ } from "../constants";
-import { isPromiseLike } from "./internal/async";
+import { __DEV__ } from "../constants";
+import { isPromiseLike, logUnhandledAsyncError } from "./internal/async";
 
 export type Cleanup = () => void | Promise<void>;
 
@@ -61,24 +61,17 @@ function resolveCleanupErrorResponse(
 				return ScopeCleanupErrorResponse.Propagate;
 			}
 		} catch (handlerError) {
-			// if (__DEV__) {
-			// 	console.error(
-			// 		"Scope cleanup error handler threw an error.",
-			// 		handlerError,
-			// 	);
-			// }
+			if (__DEV__) {
+				// eslint-disable-next-line no-console
+				console.error(
+					"Scope cleanup error handler threw an error.",
+					handlerError,
+				);
+			}
 			return undefined;
 		}
 	}
 
-	// if (__DEV__) {
-	// 	const phaseLabel =
-	// 		phase === "dispose"
-	// 			? "Scope cleanup failed"
-	// 			: "Immediate scope cleanup failed";
-	// 	const scopeLabel = scope !== undefined ? ` (scope #${scope.id})` : "";
-	// 	console.error(`${phaseLabel}${scopeLabel}.`, error);
-	// }
 	return undefined;
 }
 
@@ -111,21 +104,27 @@ function runCleanupWithHandling(
 		return response;
 	};
 
-	const handleAsyncError = (error: unknown): void => {
-		const response = handleError(error, true);
-		if (response === ScopeCleanupErrorResponse.Propagate) {
-			throw error;
-		}
-		if (response !== ScopeCleanupErrorResponse.Suppress) {
-			throwAggregateCleanupError(errors ?? [error], scope, phase);
-		}
-	};
-
 	try {
 		const result = cleanup();
 		if (isPromiseLike(result)) {
 			void Promise.resolve(result).catch((error) => {
-				handleAsyncError(error);
+				const response = resolveCleanupErrorResponse(
+					scope,
+					cleanup,
+					index,
+					total,
+					phase,
+					error,
+				);
+
+				if (response === ScopeCleanupErrorResponse.Suppress) {
+					return;
+				}
+
+				const scopeLabel = scope !== undefined ? ` (scope #${scope.id})` : "";
+				const phaseLabel =
+					phase === "dispose" ? "Scope cleanup" : "Immediate scope cleanup";
+				logUnhandledAsyncError(`${phaseLabel}${scopeLabel}`, error);
 			});
 		}
 	} catch (error) {
@@ -271,16 +270,17 @@ export function getCurrentScope(): Scope | undefined {
 	return activeScope;
 }
 
-export function registerScopeCleanup(
+export function onDispose(
 	cleanup: Cleanup,
 	scope: Scope | undefined = activeScope,
 ): () => void {
 	if (scope === undefined) {
-		// if (__DEV__) {
-		// 	console.warn(
-		// 		"registerScopeCleanup() called with no active scope; cleanup runs immediately.",
-		// 	);
-		// }
+		if (__DEV__) {
+			// eslint-disable-next-line no-console
+			console.warn(
+				"onDispose() called with no active scope; cleanup runs immediately.",
+			);
+		}
 		const errors: unknown[] = [];
 		runCleanupWithHandling(undefined, cleanup, 0, 1, "immediate", errors);
 		throwAggregateCleanupError(errors, undefined, "immediate");

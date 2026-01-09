@@ -5,19 +5,22 @@ import {
 	deepSignal,
 	disposeMolecule,
 	disposeTrackedMolecules,
+	get,
 	isComputed,
 	isDeepSignal,
 	isMoleculeInstance,
 	isSignal,
 	molecule,
+	mountMolecule,
 	nextTick,
-	onUnmount,
+	onDispose,
+	onMount,
 	pauseTracking,
 	resumeTracking,
 	signal,
 	toValue,
 	trackMolecule,
-	use,
+	unmountMolecule,
 	watchEffect,
 } from "..";
 
@@ -72,21 +75,21 @@ describe("public exports", () => {
 
 		const DemoMolecule = molecule(() => {
 			const count = signal(1);
-			onUnmount(() => {
+			onDispose(() => {
 				teardown();
 			});
 			return { count };
 		});
 
 		const ChildMolecule = molecule(() => {
-			onUnmount(() => {
+			onDispose(() => {
 				childTeardown();
 			});
 			return {};
 		});
 
 		const ParentMolecule = molecule(() => {
-			use(ChildMolecule);
+			get(ChildMolecule);
 			return {};
 		});
 
@@ -104,5 +107,23 @@ describe("public exports", () => {
 
 		disposeMolecule(instance);
 		expect(teardown).toHaveBeenCalledTimes(1);
+
+		const lifecycleEvents: string[] = [];
+		const LifecycleMolecule = molecule(() => {
+			onMount(() => {
+				lifecycleEvents.push("mount");
+				return () => {
+					lifecycleEvents.push("unmount");
+				};
+			});
+			return {};
+		});
+
+		const lifecycled = LifecycleMolecule();
+		trackMolecule(lifecycled);
+
+		mountMolecule(lifecycled);
+		unmountMolecule(lifecycled);
+		expect(lifecycleEvents).toEqual(["mount", "unmount"]);
 	});
 });

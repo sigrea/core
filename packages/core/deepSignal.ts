@@ -1,4 +1,10 @@
 import type { Computed } from "./computed";
+import { createReactiveObject } from "./reactiveObject/createReactiveObject";
+import { createArrayHandlers } from "./reactiveObject/handlers/array";
+import { createCollectionHandlers } from "./reactiveObject/handlers/collection";
+import { createMutableHandlers } from "./reactiveObject/handlers/mutable";
+import { createReadonlyHandlers } from "./reactiveObject/handlers/readonly";
+import type { HandlerHooks } from "./reactiveObject/handlers/types";
 import {
 	SignalFlags,
 	type TypedArray,
@@ -13,12 +19,6 @@ import {
 	isWeakMap,
 	isWeakSet,
 } from "./reactivity";
-import { createReactiveObject } from "./reactivity/createReactiveObject";
-import { createArrayHandlers } from "./reactivity/handlers/array";
-import { createCollectionHandlers } from "./reactivity/handlers/collection";
-import { createMutableHandlers } from "./reactivity/handlers/mutable";
-import { createReadonlyHandlers } from "./reactivity/handlers/readonly";
-import type { HandlerHooks } from "./reactivity/handlers/types";
 import type { ReadonlySignal } from "./readonly";
 import type { Signal } from "./signal";
 import { SignalNode } from "./signal";

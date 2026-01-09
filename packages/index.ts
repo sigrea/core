@@ -37,7 +37,7 @@ export {
 	createScope,
 	runWithScope,
 	getCurrentScope,
-	registerScopeCleanup,
+	onDispose,
 	disposeScope,
 	setScopeCleanupErrorHandler,
 	ScopeCleanupErrorResponse,
@@ -85,11 +85,10 @@ export {
  */
 
 // onMount
-export { onMount } from "./lifecycle/onMount";
-export type { MountOptions } from "./lifecycle/onMount";
+export { onMount } from "./molecule/lifecycle/onMount";
 
 // onUnmount
-export { onUnmount } from "./lifecycle/onUnmount";
+export { onUnmount } from "./molecule/lifecycle/onUnmount";
 
 /**
  * ==================================================
@@ -99,7 +98,7 @@ export { onUnmount } from "./lifecycle/onUnmount";
 
 // molecule
 export { molecule } from "./molecule/molecule";
-export { use } from "./molecule/use";
+export { get } from "./molecule/get";
 export type {
 	MoleculeArgs,
 	MoleculeFactory,
@@ -119,7 +118,11 @@ export type { Snapshot, SnapshotHandler } from "./molecule/handlers";
 export { isMoleculeInstance } from "./molecule/instance";
 
 // runtime API
-export { disposeMolecule } from "./molecule/internals";
+export {
+	disposeMolecule,
+	mountMolecule,
+	unmountMolecule,
+} from "./molecule/internals";
 
 // test utilities
 export { trackMolecule, disposeTrackedMolecules } from "./molecule/testing";

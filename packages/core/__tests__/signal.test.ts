@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { onMount } from "../../lifecycle/onMount";
-import { onUnmount } from "../../lifecycle/onUnmount";
 import { nextTick } from "../nextTick";
+import { createScope, disposeScope, runWithScope } from "../scope";
 import { signal } from "../signal";
 import { watchEffect } from "../watchEffect";
 
@@ -43,11 +42,12 @@ describe("signal", () => {
 		expect(maybe.value).toBe(5);
 	});
 
-	it("registers effects created inside onMount scope", async () => {
+	it("registers effects created inside a scope", async () => {
 		const count = signal(0);
 		let runs = 0;
 
-		const scope = onMount(() => {
+		const scope = createScope();
+		runWithScope(scope, () => {
 			watchEffect(() => {
 				runs += 1;
 				count.value;
@@ -60,7 +60,7 @@ describe("signal", () => {
 		await nextTick();
 		expect(runs).toBe(2);
 
-		onUnmount(scope);
+		disposeScope(scope);
 
 		count.value = 2;
 		await nextTick();
