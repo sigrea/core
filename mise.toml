@@ -24,19 +24,34 @@ run = "pnpm exec changelogen --no-output"
 description = "Cut release commit + tag (force patch)"
 depends = ["ci"]
 confirm = "Create release commit + tag (patch) on main?"
-run = 'test "$(git rev-parse --abbrev-ref HEAD)" = "main" && pnpm exec changelogen --clean --release --patch'
+run = '''
+test "$(git rev-parse --abbrev-ref HEAD)" = "main" && \
+pnpm exec changelogen --clean --release --patch && \
+pnpm format:fix && \
+git diff --quiet || git commit --amend --no-edit
+'''
 
 [tasks.release_minor]
 description = "Cut release commit + tag (force minor)"
 depends = ["ci"]
 confirm = "Create release commit + tag (minor) on main?"
-run = 'test "$(git rev-parse --abbrev-ref HEAD)" = "main" && pnpm exec changelogen --clean --release --minor'
+run = '''
+test "$(git rev-parse --abbrev-ref HEAD)" = "main" && \
+pnpm exec changelogen --clean --release --minor && \
+pnpm format:fix && \
+git diff --quiet || git commit --amend --no-edit
+'''
 
 [tasks.release_major]
 description = "Cut release commit + tag (force major)"
 depends = ["ci"]
 confirm = "Create release commit + tag (major) on main?"
-run = 'test "$(git rev-parse --abbrev-ref HEAD)" = "main" && pnpm exec changelogen --clean --release --major'
+run = '''
+test "$(git rev-parse --abbrev-ref HEAD)" = "main" && \
+pnpm exec changelogen --clean --release --major && \
+pnpm format:fix && \
+git diff --quiet || git commit --amend --no-edit
+'''
 
 [tasks.push_release]
 description = "Push main + tags (triggers publish.yml)"
