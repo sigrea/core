@@ -128,11 +128,11 @@ function mountMoleculeInstance(metadata: MoleculeMetadata): void {
 		}
 	}, mountScope);
 
-	for (const child of metadata.children) {
-		mountMoleculeInstance(child);
-	}
-
 	try {
+		for (const child of metadata.children) {
+			mountMoleculeInstance(child);
+		}
+
 		runWithScope(mountScope, () => {
 			for (const job of metadata.mountJobs) {
 				job();

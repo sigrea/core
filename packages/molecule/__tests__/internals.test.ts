@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { onDispose } from "../../core/scope";
+import { get } from "../get";
 import { isMoleculeInstance } from "../instance";
 import {
 	disposeMolecule,
@@ -8,6 +9,7 @@ import {
 	mountMolecule,
 	unmountMolecule,
 } from "../internals";
+import { onMount } from "../lifecycle/onMount";
 import { molecule } from "../molecule";
 
 describe("molecule internals", () => {
@@ -60,6 +62,52 @@ describe("molecule internals", () => {
 		unmountMolecule(instance);
 
 		expect(getCleanupCount()).toBe(0);
+
+		disposeMolecule(instance);
+	});
+
+	it("disposes parent mount scope when a child mount fails", () => {
+		const events: string[] = [];
+		let shouldThrow = true;
+
+		const ChildMolecule = molecule(() => {
+			onMount(() => {
+				events.push("child");
+				if (shouldThrow) {
+					shouldThrow = false;
+					throw new Error("boom");
+				}
+			});
+
+			return {};
+		});
+
+		const ParentMolecule = molecule(() => {
+			get(ChildMolecule);
+
+			onMount(() => {
+				events.push("parent");
+			});
+
+			return {};
+		});
+
+		const instance = ParentMolecule();
+
+		const getMountScope = () =>
+			(
+				getMoleculeMetadata(instance) as NonNullable<
+					ReturnType<typeof getMoleculeMetadata>
+				>
+			).mountScope;
+
+		expect(getMountScope()).toBeUndefined();
+
+		expect(() => mountMolecule(instance)).toThrow("boom");
+		expect(getMountScope()).toBeUndefined();
+
+		expect(() => mountMolecule(instance)).not.toThrow();
+		expect(events).toEqual(["child", "child", "parent"]);
 
 		disposeMolecule(instance);
 	});
