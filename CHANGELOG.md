@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.5.0
+
+[compare changes](https://github.com/sigrea/core/compare/v0.4.4...v0.5.0)
+
+### 🚀 Enhancements
+
+- ⚠️  Introduce molecule mount lifecycle ([#49](https://github.com/sigrea/core/pull/49))
+
+### 🏡 Chore
+
+- Add mise release_major task ([2d4908e](https://github.com/sigrea/core/commit/2d4908e))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️  Introduce molecule mount lifecycle ([#49](https://github.com/sigrea/core/pull/49))
+
+### ❤️ Contributors
+
+- Aose-yuu <aose.developer@gmail.com>
+- Aose ([@aose-yuu](https://github.com/aose-yuu))
+
 ## v0.4.4
 
 [compare changes](https://github.com/sigrea/core/compare/v0.4.3...v0.4.4)
