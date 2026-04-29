@@ -113,6 +113,155 @@ describe("watchEffect", () => {
 		stopPost();
 	});
 
+	it("does not run while paused and runs cleanup once before resuming", async () => {
+		const count = signal(0);
+		const events: string[] = [];
+
+		const handle = watchEffect((onCleanup) => {
+			const value = count.value;
+			events.push(`run-${value}`);
+			onCleanup(() => {
+				events.push(`cleanup-${value}`);
+			});
+		});
+
+		expect(events).toEqual(["run-0"]);
+
+		handle.pause();
+		count.value = 1;
+		count.value = 2;
+		await nextTick();
+
+		expect(events).toEqual(["run-0"]);
+
+		handle.resume();
+		await nextTick();
+
+		expect(events).toEqual(["run-0", "cleanup-0", "run-2"]);
+
+		handle.stop();
+	});
+
+	it("runs cleanup when stopped while paused", async () => {
+		const count = signal(0);
+		const events: string[] = [];
+
+		const handle = watchEffect((onCleanup) => {
+			const value = count.value;
+			events.push(`run-${value}`);
+			onCleanup(() => {
+				events.push(`cleanup-${value}`);
+			});
+		});
+
+		expect(events).toEqual(["run-0"]);
+
+		handle.pause();
+		count.value = 1;
+		await nextTick();
+		expect(events).toEqual(["run-0"]);
+
+		handle.stop();
+		expect(events).toEqual(["run-0", "cleanup-0"]);
+
+		handle.resume();
+		count.value = 2;
+		await nextTick();
+		expect(events).toEqual(["run-0", "cleanup-0"]);
+	});
+
+	it("defers sync resume requested by cleanup until the effect rerun finishes", () => {
+		const count = signal(0);
+		const events: string[] = [];
+
+		const handle = watchEffect(
+			(onCleanup) => {
+				const value = count.value;
+				events.push(`run-${value}`);
+				onCleanup(() => {
+					events.push(`cleanup-${value}`);
+					if (value === 0) {
+						handle.pause();
+						count.value = 2;
+						handle.resume();
+						events.push(`after-resume-${count.value}`);
+					}
+				});
+			},
+			{ flush: "sync" },
+		);
+
+		count.value = 1;
+
+		expect(events).toEqual(["run-0", "cleanup-0", "after-resume-2", "run-2"]);
+
+		handle.stop();
+	});
+
+	it("defers sync resume requested while the effect is running", () => {
+		const count = signal(0);
+		const events: string[] = [];
+
+		const handle = watchEffect(
+			() => {
+				const value = count.value;
+				events.push(`run-${value}`);
+				if (value === 1) {
+					handle.pause();
+					count.value = 2;
+					handle.resume();
+					events.push("after-resume");
+				}
+			},
+			{ flush: "sync" },
+		);
+
+		count.value = 1;
+
+		expect(events).toEqual(["run-0", "run-1", "after-resume", "run-2"]);
+
+		handle.stop();
+	});
+
+	it("reports both errors when a sync resumed effect and rerun throw", () => {
+		const count = signal(0);
+		const events: string[] = [];
+		const errors: unknown[] = [];
+
+		const handle = watchEffect(
+			() => {
+				const value = count.value;
+				events.push(`run-${value}`);
+				if (value === 1) {
+					handle.pause();
+					count.value = 2;
+					handle.resume();
+					throw new Error("first");
+				}
+				if (value === 2) {
+					throw new Error("second");
+				}
+			},
+			{ flush: "sync" },
+		);
+
+		try {
+			count.value = 1;
+		} catch (error) {
+			errors.push(error);
+		}
+
+		expect(errors).toHaveLength(1);
+		expect(errors[0]).toBeInstanceOf(AggregateError);
+		expect((errors[0] as AggregateError).errors).toEqual([
+			expect.objectContaining({ message: "first" }),
+			expect.objectContaining({ message: "second" }),
+		]);
+		expect(events).toEqual(["run-0", "run-1", "run-2"]);
+
+		handle.stop();
+	});
+
 	it("can return a cleanup from an async effect", async () => {
 		const count = signal(0);
 		const events: string[] = [];

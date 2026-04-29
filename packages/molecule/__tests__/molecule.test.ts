@@ -120,6 +120,37 @@ describe("molecule", () => {
 		expect(runs).toEqual([1, 2, 3]);
 	});
 
+	it("defers sync resume requested by a deferred watchEffect initial run", () => {
+		const events: string[] = [];
+
+		const DemoMolecule = molecule(() => {
+			const count = signal(0);
+
+			const handle = watchEffect(
+				() => {
+					const value = count.value;
+					events.push(`run-${value}`);
+					if (value === 0) {
+						handle.pause();
+						count.value = 1;
+						handle.resume();
+						events.push("after-resume");
+					}
+				},
+				{ flush: "sync" },
+			);
+
+			return { count, handle };
+		});
+
+		const instance = DemoMolecule();
+		trackMolecule(instance);
+
+		mountMolecule(instance);
+
+		expect(events).toEqual(["run-0", "after-resume", "run-1"]);
+	});
+
 	it("defers watch until mounted and preserves immediate behavior on mount", async () => {
 		const values: number[] = [];
 
@@ -157,6 +188,243 @@ describe("molecule", () => {
 
 		mountMolecule(instance);
 		expect(values).toEqual([0, 1, 2]);
+	});
+
+	it("keeps a deferred watch paused until resume after mount", async () => {
+		const values: number[] = [];
+
+		const DemoMolecule = molecule(() => {
+			const count = signal(0);
+
+			const handle = watch(
+				() => count.value,
+				(value) => {
+					values.push(value);
+				},
+				{ immediate: true },
+			);
+			handle.pause();
+
+			return { count, handle };
+		});
+
+		const instance = DemoMolecule();
+		trackMolecule(instance);
+
+		instance.count.value = 1;
+		await nextTick();
+		expect(values).toEqual([]);
+
+		mountMolecule(instance);
+		expect(values).toEqual([]);
+
+		instance.count.value = 2;
+		await nextTick();
+		expect(values).toEqual([]);
+
+		instance.handle.resume();
+		await nextTick();
+
+		expect(values).toEqual([2]);
+	});
+
+	it("keeps the mounted value as oldValue for paused deferred watches", async () => {
+		const values: Array<[number, number]> = [];
+
+		const DemoMolecule = molecule(() => {
+			const count = signal(0);
+
+			const handle = watch(
+				() => count.value,
+				(value, oldValue) => {
+					values.push([value, oldValue]);
+				},
+			);
+			handle.pause();
+
+			return { count, handle };
+		});
+
+		const instance = DemoMolecule();
+		trackMolecule(instance);
+
+		instance.count.value = 1;
+		mountMolecule(instance);
+
+		instance.count.value = 2;
+		await nextTick();
+		expect(values).toEqual([]);
+
+		instance.handle.resume();
+		await nextTick();
+
+		expect(values).toEqual([[2, 1]]);
+	});
+
+	it("defers resume requested by a deferred lazy watch initial getter", () => {
+		const values: Array<[number, number]> = [];
+
+		const DemoMolecule = molecule(() => {
+			const count = signal(0);
+
+			const handle = watch(
+				() => {
+					const value = count.value;
+					if (value === 0) {
+						handle.pause();
+						count.value = 2;
+						handle.resume();
+					}
+					return value;
+				},
+				(value, oldValue) => {
+					values.push([value, oldValue]);
+				},
+				{ flush: "sync" },
+			);
+
+			return { count, handle };
+		});
+
+		const instance = DemoMolecule();
+		trackMolecule(instance);
+
+		expect(values).toEqual([]);
+
+		mountMolecule(instance);
+		expect(values).toEqual([[2, 0]]);
+
+		instance.count.value = 3;
+		expect(values).toEqual([
+			[2, 0],
+			[3, 2],
+		]);
+	});
+
+	it("honors stop called from a deferred immediate callback", async () => {
+		const values: number[] = [];
+
+		const DemoMolecule = molecule(() => {
+			const count = signal(0);
+
+			const handle = watch(
+				count,
+				(value) => {
+					values.push(value);
+					handle.stop();
+				},
+				{ immediate: true },
+			);
+
+			return { count };
+		});
+
+		const instance = DemoMolecule();
+		trackMolecule(instance);
+
+		mountMolecule(instance);
+		expect(values).toEqual([0]);
+
+		instance.count.value = 1;
+		await nextTick();
+
+		expect(values).toEqual([0]);
+	});
+
+	it("honors pause called from a deferred immediate callback", async () => {
+		const values: number[] = [];
+
+		const DemoMolecule = molecule(() => {
+			const count = signal(0);
+
+			const handle = watch(
+				count,
+				(value) => {
+					values.push(value);
+					handle.pause();
+				},
+				{ immediate: true },
+			);
+
+			return { count, handle };
+		});
+
+		const instance = DemoMolecule();
+		trackMolecule(instance);
+
+		mountMolecule(instance);
+		expect(values).toEqual([0]);
+
+		instance.count.value = 1;
+		await nextTick();
+		expect(values).toEqual([0]);
+
+		instance.handle.resume();
+		await nextTick();
+
+		expect(values).toEqual([0, 1]);
+	});
+
+	it("does not restart a deferred watch when resumed after unmount", async () => {
+		const values: number[] = [];
+
+		const DemoMolecule = molecule(() => {
+			const count = signal(0);
+
+			const handle = watch(
+				() => count.value,
+				(value) => {
+					values.push(value);
+				},
+				{ immediate: true },
+			);
+
+			return { count, handle };
+		});
+
+		const instance = DemoMolecule();
+		trackMolecule(instance);
+
+		mountMolecule(instance);
+		expect(values).toEqual([0]);
+
+		instance.handle.pause();
+		unmountMolecule(instance);
+		instance.handle.resume();
+
+		instance.count.value = 1;
+		await nextTick();
+
+		expect(values).toEqual([0]);
+	});
+
+	it("does not restart a deferred watchEffect when resumed after unmount", async () => {
+		const values: number[] = [];
+
+		const DemoMolecule = molecule(() => {
+			const count = signal(0);
+
+			const handle = watchEffect(() => {
+				values.push(count.value);
+			});
+
+			return { count, handle };
+		});
+
+		const instance = DemoMolecule();
+		trackMolecule(instance);
+
+		mountMolecule(instance);
+		expect(values).toEqual([0]);
+
+		instance.handle.pause();
+		unmountMolecule(instance);
+		instance.handle.resume();
+
+		instance.count.value = 1;
+		await nextTick();
+
+		expect(values).toEqual([0]);
 	});
 
 	it("disposes child molecule when the parent is cleaned up", () => {
