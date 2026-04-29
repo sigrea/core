@@ -34,6 +34,12 @@ import type { Signal } from "./signal";
 
 export type WatchStopHandle = () => void;
 
+export interface WatchHandle extends WatchStopHandle {
+	pause(): void;
+	resume(): void;
+	stop(): void;
+}
+
 type SchedulerJob = (immediateFirstRun?: boolean) => void;
 
 interface AsyncQueueEntry {
@@ -164,6 +170,39 @@ const NOOP_ON_CLEANUP: OnCleanup = () => {
 	}
 };
 
+function createWatchHandle(controls: {
+	pause: () => void;
+	resume: () => void;
+	stop: () => void;
+}): WatchHandle {
+	const handle = (() => {
+		controls.stop();
+	}) as WatchHandle;
+
+	Object.defineProperties(handle, {
+		pause: {
+			value: controls.pause,
+			enumerable: false,
+			configurable: true,
+			writable: true,
+		},
+		resume: {
+			value: controls.resume,
+			enumerable: false,
+			configurable: true,
+			writable: true,
+		},
+		stop: {
+			value: handle,
+			enumerable: false,
+			configurable: true,
+			writable: true,
+		},
+	});
+
+	return handle;
+}
+
 class Watcher {
 	private readonly effect: Effect<unknown>;
 	private readonly getter: () => unknown;
@@ -180,6 +219,12 @@ class Watcher {
 	private currentOnCleanup: OnCleanup = NOOP_ON_CLEANUP;
 	private oldValue: unknown;
 	private stopped = false;
+	private paused = false;
+	private pendingInitialRun = false;
+	private pendingPausedChange = false;
+	private forceResumeRun = false;
+	private runDepth = 0;
+	private resumeAfterRun = false;
 
 	constructor(
 		source: unknown,
@@ -213,10 +258,18 @@ class Watcher {
 			this.effect.scheduler = job;
 		} else if (flushMode === "post") {
 			this.effect.scheduler = (immediateFirstRun?: boolean) => {
+				if (this.paused) {
+					job(immediateFirstRun);
+					return;
+				}
 				queuePostFlushJob(job, immediateFirstRun);
 			};
 		} else {
 			this.effect.scheduler = (immediateFirstRun?: boolean) => {
+				if (this.paused) {
+					job(immediateFirstRun);
+					return;
+				}
 				queuePreFlushJob(job, immediateFirstRun);
 			};
 		}
@@ -301,19 +354,103 @@ class Watcher {
 
 			const { onCleanup } = this.prepareCleanupContext();
 			this.currentOnCleanup = onCleanup;
-			this.oldValue = this.effect.run();
+			try {
+				this.runInWatcher(() => {
+					this.oldValue = this.effect.run();
+				});
+			} catch (error) {
+				this.currentOnCleanup = NOOP_ON_CLEANUP;
+				this.throwAfterDeferredResume(error);
+			}
 			this.currentOnCleanup = NOOP_ON_CLEANUP;
+			this.flushDeferredResume(true);
 			return;
 		}
 
-		const { onCleanup } = this.prepareCleanupContext();
-		this.currentOnCleanup = onCleanup;
-		this.effect.run();
-		this.currentOnCleanup = NOOP_ON_CLEANUP;
+		if (this.paused) {
+			this.pendingInitialRun = true;
+			return;
+		}
+
+		this.schedule(true);
 	}
 
 	setScopeDetacher(detach: (() => void) | undefined): void {
 		this.detachFromScope = detach;
+	}
+
+	pause(): void {
+		if (this.stopped) {
+			return;
+		}
+		this.paused = true;
+		if (this.isRunningRun()) {
+			this.resumeAfterRun = false;
+		}
+	}
+
+	resume(): void {
+		if (this.stopped || !this.paused) {
+			return;
+		}
+		if (this.isRunningRun()) {
+			this.resumeAfterRun = true;
+			return;
+		}
+		this.resumeNow(true);
+	}
+
+	private isRunningRun(): boolean {
+		return this.runDepth > 0;
+	}
+
+	private runInWatcher<T>(callback: () => T): T {
+		this.runDepth += 1;
+		try {
+			return callback();
+		} finally {
+			this.runDepth -= 1;
+		}
+	}
+
+	private resumeNow(schedule: boolean): void {
+		this.paused = false;
+		const immediateFirstRun = this.pendingInitialRun;
+		this.forceResumeRun = this.pendingPausedChange;
+		this.pendingInitialRun = false;
+		this.pendingPausedChange = false;
+		if (schedule) {
+			this.effect.scheduler(immediateFirstRun ? true : undefined);
+		}
+	}
+
+	private flushDeferredResume(schedule: boolean): void {
+		if (this.isRunningRun()) {
+			return;
+		}
+		if (!this.resumeAfterRun) {
+			return;
+		}
+		this.resumeAfterRun = false;
+		if (this.stopped || !this.paused) {
+			return;
+		}
+		this.resumeNow(schedule);
+	}
+
+	private throwAfterDeferredResume(error: unknown): never {
+		if (this.isRunningRun() || !this.resumeAfterRun) {
+			throw error;
+		}
+		try {
+			this.flushDeferredResume(true);
+		} catch (resumeError) {
+			throw new AggregateError(
+				[error, resumeError],
+				"Watch run failed while resuming.",
+			);
+		}
+		throw error;
 	}
 
 	stop(): void {
@@ -321,6 +458,11 @@ class Watcher {
 			return;
 		}
 		this.stopped = true;
+		this.paused = false;
+		this.pendingInitialRun = false;
+		this.pendingPausedChange = false;
+		this.forceResumeRun = false;
+		this.resumeAfterRun = false;
 		this.activeCleanupRunId = 0;
 		this.currentOnCleanup = NOOP_ON_CLEANUP;
 		this.detachFromScope?.();
@@ -334,37 +476,76 @@ class Watcher {
 			return;
 		}
 
-		if (!immediateFirstRun && !this.effect.shouldUpdate) {
+		if (this.paused) {
+			if (immediateFirstRun) {
+				this.pendingInitialRun = true;
+			} else {
+				this.pendingPausedChange = true;
+			}
 			return;
 		}
 
-		if (this.callback !== undefined) {
-			const newValue = this.effect.run();
-			const dependencyTriggered = immediateFirstRun !== true;
-			const fallbackChanged = this.computeFallbackChanged(newValue);
-			const forced = dependencyTriggered && this.shouldForceTrigger(newValue);
+		const forceRun = this.forceResumeRun;
+		this.forceResumeRun = false;
 
-			const changed = forced || fallbackChanged;
+		if (!immediateFirstRun && !forceRun && !this.effect.shouldUpdate) {
+			return;
+		}
 
-			if (changed) {
-				const { context, onCleanup } = this.prepareCleanupContext();
-				const formattedOldValue = this.normalizeOldValue();
-				this.runCleanup();
-				const result = this.callback(newValue, formattedOldValue, onCleanup);
-				this.handleCallbackResult(result, context, "watch callback");
-				this.refreshOldValue(newValue);
+		const callback = this.callback;
+		if (callback !== undefined) {
+			let newValue: unknown;
+			let result: unknown;
+			let context: number | undefined;
+			let changed = false;
+			try {
+				this.runInWatcher(() => {
+					newValue = this.effect.run();
+					const dependencyTriggered = immediateFirstRun !== true;
+					const fallbackChanged = this.computeFallbackChanged(newValue);
+					const forced =
+						dependencyTriggered && this.shouldForceTrigger(newValue);
+
+					changed = forced || fallbackChanged;
+
+					if (changed) {
+						const cleanupContext = this.prepareCleanupContext();
+						context = cleanupContext.context;
+						const formattedOldValue = this.normalizeOldValue();
+						this.runCleanup();
+						result = callback(
+							newValue,
+							formattedOldValue,
+							cleanupContext.onCleanup,
+						);
+					}
+
+					if (changed && context !== undefined) {
+						this.handleCallbackResult(result, context, "watch callback");
+						this.refreshOldValue(newValue, this.paused);
+					}
+				});
+			} catch (error) {
+				this.throwAfterDeferredResume(error);
 			}
+			this.flushDeferredResume(true);
 			return;
 		}
 
 		const { onCleanup } = this.prepareCleanupContext();
 		this.currentOnCleanup = onCleanup;
-		this.runCleanup();
 		try {
-			this.effect.run();
+			this.runInWatcher(() => {
+				this.runCleanup();
+				this.effect.run();
+			});
+		} catch (error) {
+			this.currentOnCleanup = NOOP_ON_CLEANUP;
+			this.throwAfterDeferredResume(error);
 		} finally {
 			this.currentOnCleanup = NOOP_ON_CLEANUP;
 		}
+		this.flushDeferredResume(true);
 	}
 
 	private createGetter(
@@ -528,8 +709,12 @@ class Watcher {
 	}
 
 	private computeFallbackChanged(newValue: unknown): boolean {
+		return this.hasValueChangedFrom(newValue, this.oldValue);
+	}
+
+	private hasValueChangedFrom(newValue: unknown, oldValue: unknown): boolean {
 		if (this.isMultiSource && isArray(newValue)) {
-			const previous = this.oldValue as unknown[];
+			const previous = oldValue as unknown[];
 			for (let index = 0; index < newValue.length; index += 1) {
 				if (hasChanged(newValue[index], previous[index])) {
 					return true;
@@ -538,7 +723,7 @@ class Watcher {
 			return false;
 		}
 
-		return hasChanged(newValue, this.oldValue);
+		return hasChanged(newValue, oldValue);
 	}
 
 	private shouldForceTrigger(newValue: unknown): boolean {
@@ -671,8 +856,12 @@ class Watcher {
 		return value;
 	}
 
-	private refreshOldValue(newValue: unknown): void {
+	private refreshOldValue(newValue: unknown, useCallbackValue = false): void {
 		if (this.callback === undefined) {
+			this.oldValue = newValue;
+			return;
+		}
+		if (useCallbackValue) {
 			this.oldValue = newValue;
 			return;
 		}
@@ -687,30 +876,30 @@ export function watch<Sources extends readonly AnyWatchSource[]>(
 		WatchSourceValues<Sources>
 	>,
 	options?: WatchOptions,
-): WatchStopHandle;
+): WatchHandle;
 export function watch<T extends readonly unknown[]>(
 	source: WatchSourceList<T>,
 	callback?: WatchCallback<T, T>,
 	options?: WatchOptions,
-): WatchStopHandle;
+): WatchHandle;
 export function watch<T>(
 	source: WatchSource<T>,
 	callback?: WatchCallback<T, T>,
 	options?: WatchOptions,
-): WatchStopHandle;
+): WatchHandle;
 export function watch(
 	source: WatchEffect,
 	callback?: undefined,
 	options?: WatchOptions,
-): WatchStopHandle;
+): WatchHandle;
 export function watch(
 	source: unknown,
 	callback?: AnyWatchCallback,
 	options?: WatchOptions,
-): WatchStopHandle {
+): WatchHandle {
 	const activeMountJobRegistry = getActiveMountJobRegistry();
 	if (activeMountJobRegistry !== undefined) {
-		return createDeferredWatchStopHandle(
+		return createDeferredWatchHandle(
 			activeMountJobRegistry,
 			source,
 			callback,
@@ -721,43 +910,77 @@ export function watch(
 	return watchImmediate(source, callback, options);
 }
 
-function createDeferredWatchStopHandle(
+function createDeferredWatchHandle(
 	registry: MountJobRegistry,
 	source: unknown,
 	callback: AnyWatchCallback | undefined,
 	options: WatchOptions | undefined,
-): WatchStopHandle {
+): WatchHandle {
 	let stopped = false;
-	let stopHandle: WatchStopHandle | undefined;
+	let paused = false;
+	let watchHandle: WatchHandle | undefined;
 
 	registry.register(() => {
 		if (stopped) {
 			return;
 		}
-		stopHandle = watchImmediate(source, callback, options);
+		const mountedHandle = watchImmediate(
+			source,
+			callback,
+			options,
+			paused,
+			(handle) => {
+				watchHandle = handle;
+			},
+		);
+		if (stopped) {
+			mountedHandle.stop();
+			watchHandle = undefined;
+			return;
+		}
+		watchHandle = mountedHandle;
 		const scope = getCurrentScope();
 		if (scope !== undefined) {
 			onDispose(() => {
-				stopHandle = undefined;
+				watchHandle = undefined;
 			}, scope);
 		}
 	});
 
-	return () => {
-		if (stopped) {
-			return;
-		}
-		stopped = true;
-		stopHandle?.();
-		stopHandle = undefined;
-	};
+	return createWatchHandle({
+		pause: () => {
+			if (stopped) {
+				return;
+			}
+			paused = true;
+			watchHandle?.pause();
+		},
+		resume: () => {
+			if (stopped || !paused) {
+				return;
+			}
+			paused = false;
+			watchHandle?.resume();
+		},
+		stop: () => {
+			if (stopped) {
+				return;
+			}
+			stopped = true;
+			paused = false;
+			watchHandle?.stop();
+			watchHandle = undefined;
+		},
+	});
 }
 
 function watchImmediate(
 	source: unknown,
 	callback?: AnyWatchCallback,
 	options?: WatchOptions,
-): WatchStopHandle {
+	initiallyPaused = false,
+	onHandleReady?: (handle: WatchHandle) => void,
+): WatchHandle {
 	const normalizedOptions: WatchOptions = options ?? {};
 	const watcher = new Watcher(source, callback, normalizedOptions);
 
@@ -770,9 +993,23 @@ function watchImmediate(
 	}
 	watcher.setScopeDetacher(detach);
 
+	const handle = createWatchHandle({
+		pause: () => {
+			watcher.pause();
+		},
+		resume: () => {
+			watcher.resume();
+		},
+		stop: () => {
+			watcher.stop();
+		},
+	});
+	onHandleReady?.(handle);
+
+	if (initiallyPaused) {
+		watcher.pause();
+	}
 	watcher.initialize(normalizedOptions.immediate);
 
-	return () => {
-		watcher.stop();
-	};
+	return handle;
 }

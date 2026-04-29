@@ -10,6 +10,7 @@ import {
 	shallowDeepSignal,
 	signal,
 	watch,
+	watchEffect,
 } from "..";
 
 import type {
@@ -25,6 +26,8 @@ import type {
 	Snapshot,
 	SnapshotHandler,
 	WatchCallback,
+	WatchEffectOptions,
+	WatchHandle,
 	WatchOptions,
 	WatchSource,
 	WatchStopHandle,
@@ -66,6 +69,7 @@ describe("public types", () => {
 		const numberSource: WatchSource<number> = count;
 		const objectSource: WatchSource<{ count: number }> = readonlyDeepState;
 		const options: WatchOptions<true> = { immediate: true, flush: "post" };
+		const effectOptions: WatchEffectOptions = { flush: "sync" };
 		const callback: WatchCallback<number, number> = (
 			value,
 			oldValue,
@@ -77,10 +81,19 @@ describe("public types", () => {
 		};
 
 		expectTypeOf(options).toEqualTypeOf<WatchOptions<true>>();
+		expectTypeOf(effectOptions).toEqualTypeOf<WatchEffectOptions>();
 		expectTypeOf(callback).toEqualTypeOf<WatchCallback<number, number>>();
 
-		const singleStop: WatchStopHandle = watch(numberSource, callback, options);
-		singleStop();
+		const watchHandle = watch(numberSource, callback, options);
+		expectTypeOf(watchHandle).toEqualTypeOf<WatchHandle>();
+		expectTypeOf(watchHandle).toExtend<WatchStopHandle>();
+		expectTypeOf(watchHandle.stop).toEqualTypeOf<() => void>();
+		expectTypeOf(watchHandle.pause).toEqualTypeOf<() => void>();
+		expectTypeOf(watchHandle.resume).toEqualTypeOf<() => void>();
+		watchHandle.pause();
+		watchHandle.resume();
+		watchHandle.stop();
+		watchHandle();
 
 		const objectStop: WatchStopHandle = watch(
 			objectSource,
@@ -91,14 +104,16 @@ describe("public types", () => {
 		);
 		objectStop();
 
-		const tupleStop: WatchStopHandle = watch(
-			[count, doubled] as const,
-			(value, oldValue) => {
-				expectTypeOf(value).toEqualTypeOf<[number, number]>();
-				expectTypeOf(oldValue).toEqualTypeOf<[number, number]>();
-			},
-		);
-		tupleStop();
+		const tupleHandle = watch([count, doubled] as const, (value, oldValue) => {
+			expectTypeOf(value).toEqualTypeOf<[number, number]>();
+			expectTypeOf(oldValue).toEqualTypeOf<[number, number]>();
+		});
+		expectTypeOf(tupleHandle).toEqualTypeOf<WatchHandle>();
+		tupleHandle.stop();
+
+		const effectHandle = watchEffect(() => {}, effectOptions);
+		expectTypeOf(effectHandle).toEqualTypeOf<WatchHandle>();
+		effectHandle.stop();
 
 		expectTypeOf(snapshotHandler).toEqualTypeOf<SnapshotHandler<number>>();
 		expectTypeOf(snapshotHandler.getSnapshot()).toEqualTypeOf<
