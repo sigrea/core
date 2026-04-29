@@ -66,6 +66,8 @@ Hooks are plain functions built from the core primitives.
 This package does not include UI bindings.
 In UI apps, you usually call hooks inside a molecule.
 Then connect the molecule to the UI layer via an adapter.
+`watch()` and `watchEffect()` return callable stop handles with `pause()` and
+`resume()` methods.
 
 ### Example: state + actions
 
@@ -227,6 +229,14 @@ Notes:
 
 - `get()` must be called synchronously during molecule setup.
 - `onUnmount()` callbacks and `watch()` effects are tied to the mount lifecycle.
+- `watch()` and `watchEffect()` return callable stop handles; calling one is
+  the same as `handle.stop()`, and each also exposes `handle.pause()` and
+  `handle.resume()`.
+- `handle.pause()` suspends only that watcher. Calling it does not run cleanup
+  callbacks or dispose the current scope; if changes happened while paused,
+  `handle.resume()` runs once with the latest value when needed.
+- `handle.pause()` / `handle.resume()` are separate from `pauseTracking()` /
+  `resumeTracking()`, which control dependency collection while code runs.
 - Child molecules created via `get()` are disposed with their parent.
 
 ## Testing
