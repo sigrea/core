@@ -3,7 +3,7 @@ import type {
 	DebuggerHook,
 	WatchEffect,
 	WatchFlushType,
-	WatchStopHandle,
+	WatchHandle,
 } from "./watch";
 
 export type { WatchEffect };
@@ -17,6 +17,6 @@ export interface WatchEffectOptions {
 export function watchEffect(
 	effect: WatchEffect,
 	options?: WatchEffectOptions,
-): WatchStopHandle {
+): WatchHandle {
 	return watch(effect, undefined, options);
 }

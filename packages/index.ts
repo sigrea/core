@@ -56,6 +56,7 @@ export type { Signal } from "./core/signal";
 // watch
 export { watch } from "./core/watch";
 export type {
+	WatchHandle,
 	WatchStopHandle,
 	WatchOptions,
 	WatchCallback,
@@ -64,7 +65,7 @@ export type {
 
 // watchEffect
 export { watchEffect } from "./core/watchEffect";
-export type { WatchEffect } from "./core/watchEffect";
+export type { WatchEffect, WatchEffectOptions } from "./core/watchEffect";
 
 // nextTick
 export { nextTick } from "./core/nextTick";
