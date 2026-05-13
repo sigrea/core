@@ -4,7 +4,7 @@ Thank you for contributing! This project uses a PR-based workflow with required 
 
 ## Requirements
 
-Node.js >= 20 and pnpm >= 10.
+Node.js >= 24 and pnpm >= 10.
 TypeScript strict mode, Biome for formatting, Vitest for tests.
 
 ## Scripts

@@ -2,8 +2,8 @@
 pnpm = "10.0.0"
 
 [tasks.check_node]
-description = "Ensure Node.js version is >= 20"
-run = "node -e 'const major = Number(process.versions.node.split(\".\")[0]); if (major < 20) { console.error(`Node.js >= 20 is required (current: ${process.versions.node})`); process.exit(1); }'"
+description = "Ensure Node.js version is >= 24"
+run = "node -e 'const major = Number(process.versions.node.split(\".\")[0]); if (major < 24) { console.error(`Node.js >= 24 is required (current: ${process.versions.node})`); process.exit(1); }'"
 
 [tasks.ci]
 description = "Run CI-equivalent checks (install/test/typecheck/build/format)"
