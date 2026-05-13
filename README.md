@@ -312,7 +312,7 @@ Return `ScopeCleanupErrorResponse.Propagate` to rethrow immediately for synchron
 
 ## Development
 
-This repo targets Node.js 20 or later.
+This repo targets Node.js 24 or later.
 
 ### Browser dev flag
 
