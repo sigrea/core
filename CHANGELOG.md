@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.6.0
+
+[compare changes](https://github.com/sigrea/core/compare/v0.5.0...v0.6.0)
+
+### 🚀 Enhancements
+
+- Add pausable watch handles ([#52](https://github.com/sigrea/core/pull/52))
+
+### 🩹 Fixes
+
+- Auto-format package.json after changelogen in release tasks ([9302b6e](https://github.com/sigrea/core/commit/9302b6e))
+
+### 🏡 Chore
+
+- Add Codex local environment setup ([#51](https://github.com/sigrea/core/pull/51))
+- Require Node 24 for core releases ([#53](https://github.com/sigrea/core/pull/53))
+
+### ✅ Tests
+
+- Strengthen public API coverage ([#50](https://github.com/sigrea/core/pull/50))
+
+### ❤️ Contributors
+
+- Aose ([@aose-yuu](https://github.com/aose-yuu))
+- Aose-yuu <aose.developer@gmail.com>
+
 ## v0.5.0
 
 [compare changes](https://github.com/sigrea/core/compare/v0.4.4...v0.5.0)
