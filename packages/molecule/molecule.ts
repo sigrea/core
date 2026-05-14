@@ -12,26 +12,40 @@ import {
 	popActiveMoleculeMetadata,
 	pushActiveMoleculeMetadata,
 } from "./internals";
-import type { MoleculeArgs, MoleculeFactory, MoleculeInstance } from "./types";
+import { createMoleculeProps, readMoleculeProps } from "./props";
+import type {
+	MoleculeArgs,
+	MoleculeFactory,
+	MoleculeInstance,
+	MoleculePropsInput,
+	MoleculeSetupProps,
+	ResolvedMoleculeProps,
+} from "./types";
 
 const INVALID_SETUP_RETURN_MESSAGE =
 	"molecule setup must return an object containing the public API.";
 const INVALID_ASYNC_SETUP_RETURN_MESSAGE =
 	"molecule setup must return an object synchronously. Async setup is not supported.";
 
-export function molecule<TProps = void, TReturn extends object = object>(
-	setup: (props: TProps) => TReturn,
+export function molecule<
+	TProps extends MoleculePropsInput = void,
+	TReturn extends object = object,
+>(
+	setup: (props: MoleculeSetupProps<TProps>) => TReturn,
 ): MoleculeFactory<TReturn, TProps> {
 	return createMoleculeFactory(setup);
 }
 
-function createMoleculeFactory<TReturn extends object, TProps>(
-	setup: (props: TProps) => TReturn,
+function createMoleculeFactory<
+	TReturn extends object,
+	TProps extends MoleculePropsInput,
+>(
+	setup: (props: MoleculeSetupProps<TProps>) => TReturn,
 ): MoleculeFactory<TReturn, TProps> {
 	return ((...args: MoleculeArgs<TProps>) => {
-		const props = resolveProps(args);
+		const propsStore = createMoleculeProps(resolveProps(args));
 		const scope = createScope();
-		const metadata = createMetadata(scope);
+		const metadata = createMetadata(scope, propsStore);
 		const mountRegistry: MountJobRegistry = {
 			register(job) {
 				metadata.mountJobs.push(job);
@@ -43,7 +57,9 @@ function createMoleculeFactory<TReturn extends object, TProps>(
 				pushActiveMoleculeMetadata(metadata);
 				pushMountJobRegistry(mountRegistry);
 				try {
-					const instance = ensureSetupResult(setup(props));
+					const instance = ensureSetupResult(
+						setup(readMoleculeProps(propsStore)),
+					);
 					return instance;
 				} finally {
 					popMountJobRegistry(mountRegistry);
@@ -53,7 +69,7 @@ function createMoleculeFactory<TReturn extends object, TProps>(
 
 			finalizeMetadata(metadata, moleculeInstance as object);
 
-			return moleculeInstance as MoleculeInstance<TReturn>;
+			return moleculeInstance as MoleculeInstance<TReturn, TProps>;
 		} catch (error) {
 			try {
 				disposeScope(scope);
@@ -73,11 +89,13 @@ function createMoleculeFactory<TReturn extends object, TProps>(
 	}) as MoleculeFactory<TReturn, TProps>;
 }
 
-function resolveProps<TProps>(args: MoleculeArgs<TProps>): TProps {
-	if (args.length === 0) {
-		return {} as TProps;
+function resolveProps<TProps extends MoleculePropsInput>(
+	args: MoleculeArgs<TProps>,
+): ResolvedMoleculeProps<TProps> {
+	if (args.length === 0 || args[0] === undefined) {
+		return {} as ResolvedMoleculeProps<TProps>;
 	}
-	return args[0] as TProps;
+	return args[0] as ResolvedMoleculeProps<TProps>;
 }
 
 function ensureSetupResult<TReturn extends object>(

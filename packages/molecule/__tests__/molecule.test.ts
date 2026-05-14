@@ -4,10 +4,16 @@ import { computed } from "../../core/computed";
 import { nextTick } from "../../core/nextTick";
 import { onDispose } from "../../core/scope";
 import { signal } from "../../core/signal";
+import { toSignal } from "../../core/toSignal";
 import { watch } from "../../core/watch";
 import { watchEffect } from "../../core/watchEffect";
 import { get } from "../get";
-import { disposeMolecule, mountMolecule, unmountMolecule } from "../internals";
+import {
+	disposeMolecule,
+	mountMolecule,
+	unmountMolecule,
+	updateMoleculeProps,
+} from "../internals";
 import { onMount } from "../lifecycle/onMount";
 import { molecule } from "../molecule";
 import { disposeTrackedMolecules, trackMolecule } from "../testing";
@@ -49,6 +55,116 @@ describe("molecule", () => {
 		trackMolecule(instance);
 
 		expect(instance.count.value).toBe(3);
+	});
+
+	it("keeps setup props live when molecule props are updated", () => {
+		let capturedProps: { value: string; optional?: number } | undefined;
+
+		const DemoMolecule = molecule(
+			(props: { value: string; optional?: number }) => {
+				capturedProps = props;
+				const value = computed(() => props.value);
+				const optional = computed(() => props.optional);
+				const hasOptional = computed(() => "optional" in props);
+
+				return { hasOptional, optional, value };
+			},
+		);
+
+		const instance = DemoMolecule({ optional: 1, value: "initial" });
+		trackMolecule(instance);
+
+		expect(instance.value.value).toBe("initial");
+		expect(instance.optional.value).toBe(1);
+		expect(instance.hasOptional.value).toBe(true);
+		const initialProps = capturedProps;
+
+		updateMoleculeProps(instance, { value: "next" });
+
+		expect(instance.value.value).toBe("next");
+		expect(instance.optional.value).toBeUndefined();
+		expect(instance.hasOptional.value).toBe(false);
+		expect(capturedProps).toBe(initialProps);
+	});
+
+	it("exposes live props as keyed readonly signals", () => {
+		const DialogMolecule = molecule(
+			(props: { disabled?: boolean; open: boolean }) => {
+				const disabled = toSignal(props, "disabled");
+				const open = toSignal(props, "open");
+
+				return { disabled, open };
+			},
+		);
+
+		const instance = DialogMolecule({ open: false });
+		trackMolecule(instance);
+
+		expect(instance.open.value).toBe(false);
+		expect(instance.disabled.value).toBeUndefined();
+
+		updateMoleculeProps(instance, { disabled: true, open: true });
+
+		expect(instance.open.value).toBe(true);
+		expect(instance.disabled.value).toBe(true);
+
+		updateMoleculeProps(instance, { open: false });
+
+		expect(instance.open.value).toBe(false);
+		expect(instance.disabled.value).toBeUndefined();
+	});
+
+	it("rejects non-plain object props containers", () => {
+		const DemoMolecule = molecule((props: { value?: number }) => {
+			return { value: computed(() => props.value) };
+		});
+
+		expect(() => DemoMolecule(null as never)).toThrow(
+			"molecule props must be a plain object.",
+		);
+		expect(() => DemoMolecule(1 as never)).toThrow(
+			"molecule props must be a plain object.",
+		);
+		expect(() => DemoMolecule([] as never)).toThrow(
+			"molecule props must be a plain object.",
+		);
+		expect(() => DemoMolecule((() => ({})) as never)).toThrow(
+			"molecule props must be a plain object.",
+		);
+
+		const instance = DemoMolecule({ value: 1 });
+		trackMolecule(instance);
+
+		expect(() => updateMoleculeProps(instance, [] as never)).toThrow(
+			"molecule props must be a plain object.",
+		);
+	});
+
+	it("passes nested prop values through without coercing them", () => {
+		const count = signal(1);
+		const nested = { label: "nested" };
+		const items = new Map([["id", 1]]);
+
+		const DemoMolecule = molecule(
+			(props: {
+				count: typeof count;
+				items: typeof items;
+				nested: typeof nested;
+			}) => {
+				return {
+					count: props.count,
+					items: props.items,
+					nested: props.nested,
+				};
+			},
+		);
+
+		const instance = DemoMolecule({ count, items, nested });
+		trackMolecule(instance);
+
+		expect(instance.count).toBe(count);
+		expect(instance.items).toBe(items);
+		expect(instance.nested).toBe(nested);
 	});
 
 	it("runs onMount callbacks when mounted and runs returned cleanups on dispose", () => {
@@ -546,6 +662,138 @@ describe("molecule", () => {
 		const parent = ParentMolecule({ childId: 42 });
 		trackMolecule(parent);
 		expect(parent.child.identifier.value).toBe(42);
+	});
+
+	it("updates child molecule props when get receives a props getter", () => {
+		const ChildMolecule = molecule((props: { id: number }) => {
+			const identifier = computed(() => props.id);
+			return { identifier };
+		});
+
+		const ParentMolecule = molecule((props: { childId: number }) => {
+			const child = get(ChildMolecule, () => ({ id: props.childId }));
+			return { child };
+		});
+
+		const parent = ParentMolecule({ childId: 42 });
+		trackMolecule(parent);
+
+		expect(parent.child.identifier.value).toBe(42);
+
+		updateMoleculeProps(parent, { childId: 7 });
+
+		expect(parent.child.identifier.value).toBe(7);
+	});
+
+	it("rejects invalid child props returned from a props getter", () => {
+		const ChildMolecule = molecule((props: { value: string }) => {
+			return { value: computed(() => props.value) };
+		});
+		const ParentMolecule = molecule(() => {
+			get(ChildMolecule, () => [] as never);
+			return {};
+		});
+
+		expect(() => ParentMolecule()).toThrow(
+			"molecule props must be a plain object.",
+		);
+	});
+
+	it("tracks pass-through parent props in get props getters", () => {
+		const ChildMolecule = molecule((props: { id: number; label?: string }) => {
+			const identifier = computed(() => props.id);
+			const label = computed(() => props.label);
+			const hasLabel = computed(() => "label" in props);
+
+			return { hasLabel, identifier, label };
+		});
+
+		const ParentMolecule = molecule((props: { id: number; label?: string }) => {
+			const child = get(ChildMolecule, () => props);
+			return { child };
+		});
+
+		const parent = ParentMolecule({ id: 42, label: "initial" });
+		trackMolecule(parent);
+
+		expect(parent.child.identifier.value).toBe(42);
+		expect(parent.child.label.value).toBe("initial");
+		expect(parent.child.hasLabel.value).toBe(true);
+
+		updateMoleculeProps(parent, { id: 7 });
+
+		expect(parent.child.identifier.value).toBe(7);
+		expect(parent.child.label.value).toBeUndefined();
+		expect(parent.child.hasLabel.value).toBe(false);
+	});
+
+	it("stops child props getter tracking when the child is disposed", () => {
+		const ChildMolecule = molecule((props: { id: number }) => {
+			const identifier = computed(() => props.id);
+			return { identifier };
+		});
+		let getterRuns = 0;
+
+		const ParentMolecule = molecule((props: { id: number }) => {
+			const child = get(ChildMolecule, () => {
+				getterRuns += 1;
+				return { id: props.id };
+			});
+
+			return { child };
+		});
+
+		const parent = ParentMolecule({ id: 1 });
+		trackMolecule(parent);
+
+		expect(getterRuns).toBe(1);
+
+		disposeMolecule(parent.child);
+		updateMoleculeProps(parent, { id: 2 });
+
+		expect(getterRuns).toBe(1);
+	});
+
+	it("does not run a queued child props getter after the child is disposed", () => {
+		const ChildMolecule = molecule((props: { id: number }) => {
+			const identifier = computed(() => props.id);
+			return { identifier };
+		});
+		let getterRuns = 0;
+
+		const ParentMolecule = molecule(
+			(props: { disposeChild: boolean; id: number }) => {
+				const childRef: { current?: ReturnType<typeof ChildMolecule> } = {};
+
+				watch(
+					() => props.disposeChild,
+					(shouldDispose) => {
+						if (shouldDispose && childRef.current !== undefined) {
+							disposeMolecule(childRef.current);
+						}
+					},
+					{ flush: "sync" },
+				);
+
+				const child = get(ChildMolecule, () => {
+					getterRuns += 1;
+					return { id: props.id };
+				});
+				childRef.current = child;
+
+				return { child };
+			},
+		);
+
+		const parent = ParentMolecule({ disposeChild: false, id: 1 });
+		trackMolecule(parent);
+		mountMolecule(parent);
+
+		expect(getterRuns).toBe(1);
+
+		updateMoleculeProps(parent, { disposeChild: true, id: 2 });
+
+		expect(getterRuns).toBe(1);
 	});
 
 	it("throws when get is called outside molecule setup", () => {

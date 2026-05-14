@@ -4,11 +4,14 @@ import {
 	computed,
 	createSignalHandler,
 	deepSignal,
+	get,
 	molecule,
 	readonly,
 	readonlyShallowDeepSignal,
 	shallowDeepSignal,
 	signal,
+	toSignal,
+	updateMoleculeProps,
 	watch,
 	watchEffect,
 } from "..";
@@ -18,6 +21,7 @@ import type {
 	DeepSignal,
 	MoleculeArgs,
 	MoleculeInstance,
+	MoleculeSetupProps,
 	ReadonlyDeepSignal,
 	ReadonlyShallowDeepSignal,
 	ReadonlySignal,
@@ -45,6 +49,7 @@ describe("public types", () => {
 			count,
 			nested: { flag: false },
 		});
+		const nestedSignal = toSignal(shallowState, "nested");
 		const snapshotHandler = createSignalHandler(count);
 
 		expectTypeOf(count).toEqualTypeOf<Signal<number>>();
@@ -65,6 +70,9 @@ describe("public types", () => {
 			}>
 		>();
 		expectTypeOf(readonlyShallowState.count).toEqualTypeOf<Signal<number>>();
+		expectTypeOf(nestedSignal).toEqualTypeOf<
+			ReadonlySignal<{ flag: boolean }>
+		>();
 
 		const numberSource: WatchSource<number> = count;
 		const objectSource: WatchSource<{ count: number }> = readonlyDeepState;
@@ -121,9 +129,19 @@ describe("public types", () => {
 		>();
 
 		type OptionalProps = { label?: string };
-		const OptionalMolecule = molecule((props: OptionalProps) => ({
-			label: props.label ?? "default",
-		}));
+		const OptionalMolecule = molecule((props: OptionalProps) => {
+			return {
+				label: props.label ?? "default",
+			};
+		});
+		const TypedPropsMolecule = molecule<OptionalProps, { label: string }>(
+			(props) => {
+				expectTypeOf(props).toEqualTypeOf<MoleculeSetupProps<OptionalProps>>();
+				return {
+					label: props.label ?? "default",
+				};
+			},
+		);
 
 		expectTypeOf<Parameters<typeof OptionalMolecule>>().toEqualTypeOf<
 			MoleculeArgs<OptionalProps>
@@ -134,5 +152,26 @@ describe("public types", () => {
 			MoleculeInstance<{ label: string }>
 		>();
 		expectTypeOf(optionalInstance.label).toEqualTypeOf<string>();
+		updateMoleculeProps(optionalInstance, { label: "next" });
+		const assertUpdatePropsTypes = () => {
+			updateMoleculeProps(optionalInstance, { label: "typed" });
+			// @ts-expect-error update props must match the molecule props type
+			updateMoleculeProps(optionalInstance, { wrong: true });
+		};
+		void assertUpdatePropsTypes;
+
+		const typedPropsInstance = TypedPropsMolecule({ label: "typed" });
+		expectTypeOf(typedPropsInstance.label).toEqualTypeOf<string>();
+
+		const ChildMolecule = molecule((props: { id: number }) => ({
+			id: props.id,
+		}));
+		const ParentMolecule = molecule((props: { childId: number }) => ({
+			child: get(ChildMolecule, () => ({ id: props.childId })),
+		}));
+		const parentInstance = ParentMolecule({ childId: 1 });
+		expectTypeOf(parentInstance.child).toExtend<
+			MoleculeInstance<{ id: number }>
+		>();
 	});
 });
