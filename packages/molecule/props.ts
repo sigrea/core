@@ -74,8 +74,22 @@ export function replaceMoleculeProps<TProps extends object>(
 		}
 
 		for (const key of nextKeys) {
-			state[key] = next[key];
+			replaceMoleculeProp(state, key, next[key]);
 		}
+	});
+}
+
+function replaceMoleculeProp(
+	state: Record<PropertyKey, unknown>,
+	key: PropertyKey,
+	value: unknown,
+): void {
+	// Assignment syncs into an existing Signal slot. Props replacement must replace the slot itself.
+	Reflect.defineProperty(state, key, {
+		configurable: true,
+		enumerable: true,
+		value,
+		writable: true,
 	});
 }
 

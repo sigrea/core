@@ -167,6 +167,28 @@ describe("molecule", () => {
 		expect(instance.nested).toBe(nested);
 	});
 
+	it("replaces signal-valued top-level props without mutating the old signal", () => {
+		const initial = signal("initial");
+
+		const DemoMolecule = molecule(
+			(props: { value: string | typeof initial }) => {
+				return {
+					value: computed(() => props.value),
+				};
+			},
+		);
+
+		const instance = DemoMolecule({ value: initial });
+		trackMolecule(instance);
+
+		expect(instance.value.value).toBe(initial);
+
+		updateMoleculeProps(instance, { value: "next" });
+
+		expect(instance.value.value).toBe("next");
+		expect(initial.value).toBe("initial");
+	});
+
 	it("runs onMount callbacks when mounted and runs returned cleanups on dispose", () => {
 		const cleanup = vi.fn();
 		const mounts = vi.fn();
