@@ -5,10 +5,10 @@
 </p>
 
 Sigrea is a small reactive core built on [alien-signals](https://github.com/stackblitz/alien-signals).
-It adds deep reactivity and scope-based lifecycles.
-It provides core primitives to build hooks, plus optional lifecycles for ownership and cleanup.
+It adds deep reactivity and scope-based lifecycles, and exposes the primitives
+needed to build hooks.
 
-- **Core primitives.** `signal`, `computed`, `deepSignal`, `watch`, and `watchEffect`.
+- **Core primitives.** `signal`, `computed`, `toSignal`, `deepSignal`, `watch`, and `watchEffect`.
 - **Lifecycles.** `Scope`, `onMount`, and `onUnmount` for cleanup boundaries.
 - **Molecules.** `molecule()` is a lifecycle container that doesn't render UI.
 - **Composition.** Build molecule trees via `get()`.
@@ -125,18 +125,27 @@ export function useUserProfile() {
 ## Molecules
 
 `molecule(setup)` creates a function.
-Calling it creates a new instance with its own root `Scope`.
+Calling the returned factory creates a new instance with its own root `Scope`.
 It does not render anything.
 Use molecules when you need:
 
 - a clear ownership + cleanup boundary (`Scope`, `onUnmount`),
 - parent-child relationships between lifecycled units (`get()`),
-- per-instance initial configuration via props.
+- parent-driven inputs via props.
 
-Props are meant to be immutable configuration. Sigrea does not track prop changes.
-If you need dynamic inputs, model them via signals or explicit molecule methods.
+Props passed to `setup` are stable, shallow readonly, and reactive at the top
+level. Official adapters keep them in sync with component props. If you use core
+directly, call `updateMoleculeProps(instance, nextProps)` to replace them.
 
-Molecule setup only constructs state.
+Read props through `props.propName`. Destructuring a prop value copies the
+current value and loses reactivity. Use `toSignal(props, "propName")` when you
+need to pass a prop around as a
+`ReadonlySignal`.
+
+The props object must be a plain object. Sigrea syncs enumerable top-level
+properties and passes nested values as-is.
+
+Molecule setup declares state and registers lifecycle hooks.
 When `onMount`, `onUnmount`, `watch`, or `watchEffect` are called during setup,
 their work is deferred until the molecule is mounted.
 Official adapters mount and unmount molecules automatically.
@@ -146,92 +155,117 @@ Inside `setup`, you can call hooks or use the core primitives directly.
 Child molecules are internal dependencies—prefer returning only the outputs
 (signals, computed values, actions) that consumers need.
 
-### Creating a molecule
+### Controlled values with a controller molecule
+
+This example uses `createEvents` from `@sigrea/use`.
 
 ```ts
-import { molecule, onMount, onUnmount, readonly, signal } from "@sigrea/core";
+import {
+  computed,
+  get,
+  molecule,
+  readonly,
+  signal,
+  toSignal,
+} from "@sigrea/core";
+import { createEvents } from "@sigrea/use";
 
-interface IntervalMoleculeProps {
-  intervalMs: number;
+interface DialogProps {
+  open: boolean;
+  disabled?: boolean;
 }
 
-const IntervalMolecule = molecule<IntervalMoleculeProps>((props) => {
-  const tick = signal(0);
-  let id: ReturnType<typeof setInterval> | undefined;
+type DialogEvents = {
+  "update:open": [open: boolean];
+};
 
-  onMount(() => {
-    id = setInterval(() => {
-      tick.value += 1;
-    }, props.intervalMs);
-  });
+const DialogMolecule = molecule<DialogProps>((props) => {
+  const { send, on } = createEvents<DialogEvents>();
+  const open = toSignal(props, "open");
+  const disabled = computed(() => props.disabled ?? false);
 
-  onUnmount(() => {
-    if (id === undefined) {
+  const requestOpenChange = async (nextOpen: boolean) => {
+    if (disabled.value) {
       return;
     }
-    clearInterval(id);
+    await send("update:open", nextOpen);
+  };
+
+  return {
+    disabled,
+    on,
+    open,
+    requestOpenChange,
+  };
+});
+
+const DialogControllerMolecule = molecule(() => {
+  const open = signal(false);
+  const dialog = get(DialogMolecule, () => ({
+    open: open.value,
+  }));
+
+  dialog.on("update:open", (nextOpen) => {
+    open.value = nextOpen;
   });
 
   return {
-    tick: readonly(tick),
+    open: readonly(open),
+    requestOpenChange: dialog.requestOpenChange,
   };
 });
 ```
 
+This pattern keeps the controlled value in a parent or controller molecule. The
+child molecule reads `props.open` and sends `update:open` when it wants its
+owner to replace the value. Framework adapters mount the controller molecule.
+Components read the signals and computed values it returns; raw molecule events
+stay inside the molecule graph.
+
 ### Composing molecules with `get()`
 
 ```ts
-import { get, molecule, readonly, signal, watch } from "@sigrea/core";
+import { get, molecule, toSignal } from "@sigrea/core";
 
-interface DraftSessionMoleculeProps {
-  intervalMs: number;
-  initialText: string;
-  save: (text: string) => void;
+interface TabIndicatorProps {
+  selectedValue: string;
 }
 
-export const DraftSessionMolecule = molecule<DraftSessionMoleculeProps>(
-  (props) => {
-    const text = signal(props.initialText);
-    const isDirty = signal(false);
+const TabIndicatorMolecule = molecule<TabIndicatorProps>((props) => {
+  return {
+    selectedValue: toSignal(props, "selectedValue"),
+  };
+});
 
-    const setText = (next: string) => {
-      text.value = next;
-      isDirty.value = true;
-    };
+interface TabsProps {
+  selectedValue: string;
+}
 
-    const save = () => {
-      props.save(text.value);
-      isDirty.value = false;
-    };
+const TabsMolecule = molecule<TabsProps>((props) => {
+  const indicator = get(TabIndicatorMolecule, () => ({
+    selectedValue: props.selectedValue,
+  }));
 
-    const interval = get(IntervalMolecule, {
-      intervalMs: props.intervalMs,
-    });
-
-    watch(interval.tick, () => {
-      if (!isDirty.value) {
-        return;
-      }
-      save();
-    });
-
-    return {
-      isDirty: readonly(isDirty),
-      setText,
-      save,
-      text: readonly(text),
-    };
-  },
-);
+  return {
+    indicator,
+    selectedValue: toSignal(props, "selectedValue"),
+  };
+});
 ```
 
 Notes:
 
+- Use `computed()` for derived state, and `toSignal(props, "key")` when you need
+  to pass a reactive prop as a signal to another API.
+- Use `get()` to create and own child molecule instances.
 - `get()` must be called synchronously during molecule setup.
+- `get(Child, props)` passes a static props snapshot. Use
+  `get(Child, () => ({ ... }))` to derive child props reactively from parent
+  props.
 - `onUnmount()` callbacks and `watch()` effects are tied to the mount lifecycle.
-- `watch()` and `watchEffect()` return callable stop handles; calling one is
-  the same as `handle.stop()`, and each also exposes `handle.pause()` and
-  `handle.resume()`.
+- `watch()` and `watchEffect()` return callable stop handles; calling a handle
+  directly is equivalent to calling `handle.stop()`, and each handle also
+  exposes `handle.pause()` and `handle.resume()`.
 - `handle.pause()` suspends only that watcher. Calling it does not run cleanup
   callbacks or dispose the current scope; if changes happened while paused,
   `handle.resume()` runs once with the latest value when needed.

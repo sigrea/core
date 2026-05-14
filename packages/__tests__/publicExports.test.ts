@@ -36,10 +36,12 @@ import {
 	shallowDeepSignal,
 	signal,
 	toRawDeepSignal,
+	toSignal,
 	toValue,
 	trackMolecule,
 	unmountMolecule,
 	untracked,
+	updateMoleculeProps,
 	watch,
 	watchEffect,
 } from "..";
@@ -89,6 +91,7 @@ describe("public exports", () => {
 		expect(shallow.count).toBe(count);
 		expect(isSignal(shallow.count)).toBe(true);
 		expect(toRawDeepSignal(state)).toBe(source);
+		expect(toSignal(state, "nested").value.flag).toBe(true);
 
 		expect(isRaw(rawPayload)).toBe(true);
 		expect(isRaw({ nested: { flag: false } })).toBe(false);
@@ -300,8 +303,8 @@ describe("public exports", () => {
 			return {};
 		});
 
-		const ParentMolecule = molecule(() => {
-			const count = signal(1);
+		const ParentMolecule = molecule((props: { count: number }) => {
+			const count = computed(() => props.count);
 
 			get(ChildMolecule);
 
@@ -319,11 +322,14 @@ describe("public exports", () => {
 			return { count };
 		});
 
-		const parent = ParentMolecule();
+		const parent = ParentMolecule({ count: 1 });
 		trackMolecule(parent);
 
 		expect(isMoleculeInstance(parent)).toBe(true);
 		expect(parent.count.value).toBe(1);
+
+		updateMoleculeProps(parent, { count: 2 });
+		expect(parent.count.value).toBe(2);
 
 		mountMolecule(parent);
 		unmountMolecule(parent);

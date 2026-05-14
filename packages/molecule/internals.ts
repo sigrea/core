@@ -6,11 +6,15 @@ import {
 	runWithScope,
 } from "../core/scope";
 
+import type { MoleculePropsStore } from "./props";
+import { replaceMoleculeProps } from "./props";
 import type { MoleculeInstance } from "./types";
+import type { MoleculePropsInput, ResolvedMoleculeProps } from "./types";
 
 export interface MoleculeMetadata {
 	target: object;
 	scope: Scope;
+	props: MoleculePropsStore;
 	mountScope?: Scope;
 	mountJobs: Array<() => void>;
 	disposed: boolean;
@@ -31,11 +35,15 @@ function collectErrors(target: unknown, errors: unknown[]): void {
 	errors.push(target);
 }
 
-export function createMetadata(scope: Scope): MoleculeMetadata {
+export function createMetadata(
+	scope: Scope,
+	props: MoleculePropsStore,
+): MoleculeMetadata {
 	return {
 		// Temporary placeholder; will be set in finalizeMetadata.
 		target: {} as object,
 		scope,
+		props,
 		mountJobs: [],
 		disposed: false,
 		children: new Set(),
@@ -187,11 +195,27 @@ export function unmountMolecule<T extends object>(
 	}
 }
 
-export function linkChildMolecule<T extends object>(
+export function updateMoleculeProps<
+	T extends object,
+	TProps extends MoleculePropsInput,
+>(
+	value: MoleculeInstance<T, TProps>,
+	props: NoInfer<ResolvedMoleculeProps<TProps>>,
+): void {
+	const metadata = getMoleculeMetadata(value);
+	if (metadata !== undefined) {
+		replaceMoleculeProps(metadata.props, props);
+	}
+}
+
+export function linkChildMolecule<
+	T extends object,
+	TProps extends MoleculePropsInput = MoleculePropsInput,
+>(
 	parent: MoleculeMetadata,
 	child: MoleculeMetadata,
-	instance: MoleculeInstance<T>,
-): MoleculeInstance<T> {
+	instance: MoleculeInstance<T, TProps>,
+): MoleculeInstance<T, TProps> {
 	if (child.disposed) {
 		throw new Error(
 			"Cannot link a disposed molecule instance. Create a new instance instead.",

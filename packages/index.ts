@@ -28,6 +28,9 @@ export type {
 export { readonly } from "./core/readonly";
 export type { ReadonlySignal } from "./core/readonly";
 
+// toSignal
+export { toSignal } from "./core/toSignal";
+
 // markRaw
 export { markRaw, isRaw } from "./core/markRaw";
 
@@ -102,8 +105,13 @@ export { molecule } from "./molecule/molecule";
 export { get } from "./molecule/get";
 export type {
 	MoleculeArgs,
+	MoleculeGetArgs,
 	MoleculeFactory,
 	MoleculeInstance,
+	MoleculePropsGetter,
+	MoleculePropsInput,
+	MoleculeSetupProps,
+	ResolvedMoleculeProps,
 	IsAllOptional,
 } from "./molecule/types";
 
@@ -123,6 +131,7 @@ export {
 	disposeMolecule,
 	mountMolecule,
 	unmountMolecule,
+	updateMoleculeProps,
 } from "./molecule/internals";
 
 // test utilities
