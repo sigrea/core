@@ -29,7 +29,7 @@ pnpm format:fix      # Apply Biome auto-fixes
 
 **CI simulation:**
 ```bash
-pnpm cicheck         # Run tests + typecheck + format (identical to CI)
+pnpm -s cicheck      # Run test, typecheck, build, smoke, and format checks
 ```
 
 **Run a single test:**
@@ -121,9 +121,9 @@ packages/
 
 ## Release Flow
 
-- Maintainers run `pnpm release` locally, which executes tests, builds, bumps the version via Changelogen, and commits/tag the release (e.g., `chore(release): vX.Y.Z` plus `vX.Y.Z` tag).
-- Push the commit and tag (`git push --follow-tags`). This triggers `.github/workflows/publish.yml` automatically or it can be re-run via `workflow_dispatch`.
-- `publish` installs deps, runs tests/build, publishes to npm (with `--provenance`) and GitHub Packages, ensures the tag exists, and syncs GitHub Release notes via `pnpm dlx changelogen gh release vX.Y.Z --token $GITHUB_TOKEN`.
+- Maintainers run `SIGREA_RELEASE_VERSION=x.y.z mise run release_version` from a clean `main` branch. The task runs `pnpm -s cicheck`, updates the changelog, and creates the `chore(release): vX.Y.Z` commit plus annotated `vX.Y.Z` tag.
+- Push the commit and tag with `mise run push_release`. This runs `git push origin main --follow-tags` and triggers `.github/workflows/publish.yml`.
+- `publish` installs deps, runs `pnpm -s cicheck`, publishes to npm with OIDC trusted publishing, and syncs GitHub Release notes via `pnpm exec changelogen gh release`.
 
 ## Important Notes
 

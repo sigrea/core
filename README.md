@@ -17,7 +17,7 @@ needed to build hooks.
 Inspired by:
 - [Vue 3](https://vuejs.org/) — deep reactivity and scope control
 - [nanostores](https://github.com/nanostores/nanostores) — store-centric architecture
-- [bunshi](https://github.com/saasquatch/bunshi) — molecule and composition API design
+- [bunshi](https://github.com/saasquatch/bunshi) — molecule concepts and `get()`-based parent-child graph design
 
 ## Table of Contents
 
@@ -261,7 +261,9 @@ Notes:
 - `get()` must be called synchronously during molecule setup.
 - `get(Child, props)` passes a static props snapshot. Use
   `get(Child, () => ({ ... }))` to derive child props reactively from parent
-  props.
+  props. The child instance is not recreated when live props change.
+- Props sync is top-level only. Nested objects are passed through as values;
+  replace the top-level prop when a nested value must notify dependents.
 - `onUnmount()` callbacks and `watch()` effects are tied to the mount lifecycle.
 - `watch()` and `watchEffect()` return callable stop handles; calling a handle
   directly is equivalent to calling `handle.stop()`, and each handle also
@@ -373,7 +375,7 @@ export default defineConfig(({ command }) => ({
 If you use mise:
 
 - `mise trust -y` — trust `mise.toml` (first run only).
-- `mise run ci` — run CI-equivalent checks locally.
+- `pnpm -s cicheck` — run CI-equivalent checks locally.
 - `mise run notes` — preview release notes (optional).
 
 You can also run pnpm scripts directly:
@@ -383,7 +385,7 @@ You can also run pnpm scripts directly:
 - `pnpm typecheck` — run TypeScript type checking.
 - `pnpm test:coverage` — collect coverage.
 - `pnpm build` — build the package.
-- `pnpm cicheck` — run CI checks locally.
+- `pnpm -s cicheck` — run CI checks locally.
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for workflow details.
 
