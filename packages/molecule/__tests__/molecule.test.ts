@@ -91,30 +91,30 @@ describe("molecule", () => {
 		const DialogMolecule = molecule(
 			(props: { disabled?: boolean; open: boolean }) => {
 				const disabled = toSignal(props, "disabled");
-				const open = toSignal(props, "open");
+				const isOpen = toSignal(props, "open");
 
-				return { disabled, open };
+				return { disabled, isOpen };
 			},
 		);
 
 		const instance = DialogMolecule({ open: false });
 		trackMolecule(instance);
 
-		expect(instance.open.value).toBe(false);
+		expect(instance.isOpen.value).toBe(false);
 		expect(instance.disabled.value).toBeUndefined();
 
 		updateMoleculeProps(instance, { disabled: true, open: true });
 
-		expect(instance.open.value).toBe(true);
+		expect(instance.isOpen.value).toBe(true);
 		expect(instance.disabled.value).toBe(true);
 
 		updateMoleculeProps(instance, { open: false });
 
-		expect(instance.open.value).toBe(false);
+		expect(instance.isOpen.value).toBe(false);
 		expect(instance.disabled.value).toBeUndefined();
 
 		expect(() => {
-			(instance.open as { value: boolean }).value = true;
+			(instance.isOpen as { value: boolean }).value = true;
 		}).toThrow("Cannot assign to a readonly computed value.");
 	});
 
