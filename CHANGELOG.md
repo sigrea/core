@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.7.0
+
+[compare changes](https://github.com/sigrea/core/compare/v0.6.0...v0.7.0)
+
+### 🚀 Enhancements
+
+- Add live molecule props ([#54](https://github.com/sigrea/core/pull/54))
+
+### ❤️ Contributors
+
+- Aose ([@aose-yuu](https://github.com/aose-yuu))
+
 ## v0.6.0
 
 [compare changes](https://github.com/sigrea/core/compare/v0.5.0...v0.6.0)
