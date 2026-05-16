@@ -1,56 +1,28 @@
 [tools]
+node = "24"
 pnpm = "10.0.0"
-
-[tasks.check_node]
-description = "Ensure Node.js version is >= 24"
-run = "node -e 'const major = Number(process.versions.node.split(\".\")[0]); if (major < 24) { console.error(`Node.js >= 24 is required (current: ${process.versions.node})`); process.exit(1); }'"
-
-[tasks.ci]
-description = "Run CI-equivalent checks (install/test/typecheck/build/format)"
-depends = ["check_node"]
-run = [
-  "pnpm install",
-  "pnpm -s test",
-  "pnpm -s typecheck",
-  "pnpm -s build",
-  "pnpm -s format",
-]
 
 [tasks.notes]
 description = "Preview changelog notes (no file changes)"
 run = "pnpm exec changelogen --no-output"
 
-[tasks.release_patch]
-description = "Cut release commit + tag (force patch)"
-depends = ["ci"]
-confirm = "Create release commit + tag (patch) on main?"
+[tasks.release_version]
+description = "Cut release commit + annotated tag for SIGREA_RELEASE_VERSION"
 run = '''
-test "$(git rev-parse --abbrev-ref HEAD)" = "main" && \
-pnpm exec changelogen --clean --release --patch && \
-pnpm format:fix && \
-git diff --quiet || git commit --amend --no-edit
-'''
-
-[tasks.release_minor]
-description = "Cut release commit + tag (force minor)"
-depends = ["ci"]
-confirm = "Create release commit + tag (minor) on main?"
-run = '''
-test "$(git rev-parse --abbrev-ref HEAD)" = "main" && \
-pnpm exec changelogen --clean --release --minor && \
-pnpm format:fix && \
-git diff --quiet || git commit --amend --no-edit
-'''
-
-[tasks.release_major]
-description = "Cut release commit + tag (force major)"
-depends = ["ci"]
-confirm = "Create release commit + tag (major) on main?"
-run = '''
-test "$(git rev-parse --abbrev-ref HEAD)" = "main" && \
-pnpm exec changelogen --clean --release --major && \
-pnpm format:fix && \
-git diff --quiet || git commit --amend --no-edit
+test "$(git rev-parse --abbrev-ref HEAD)" = "main"
+test -n "${SIGREA_RELEASE_VERSION:-}" || { echo "SIGREA_RELEASE_VERSION is required, for example SIGREA_RELEASE_VERSION=0.7.1 mise run release_version." >&2; exit 1; }
+test -z "$(git status --porcelain)" || { echo "Git status must be clean before release." >&2; git status --short; exit 1; }
+pnpm -s cicheck
+test -z "$(git status --porcelain)" || { echo "cicheck changed files." >&2; git status --short; exit 1; }
+pnpm exec changelogen --clean --release -r "$SIGREA_RELEASE_VERSION"
+pnpm format:fix
+if ! git diff --quiet; then
+  git add -A
+  git commit --amend --no-edit
+  git tag -fa "v$SIGREA_RELEASE_VERSION" -m "v$SIGREA_RELEASE_VERSION"
+fi
+test "$(git cat-file -t "v$SIGREA_RELEASE_VERSION")" = "tag"
+test -z "$(git status --porcelain)" || { echo "Release changed files unexpectedly." >&2; git status --short; exit 1; }
 '''
 
 [tasks.push_release]

@@ -12,15 +12,13 @@ jobs:
     environment: release
     concurrency: publish-${{ github.ref }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - run: pnpm install
-      - run: pnpm test
-      - run: pnpm typecheck
-      - run: pnpm build
+      - run: pnpm -s cicheck
       - name: Ensure npm CLI supports trusted publishing
         run: |
           npm i -g npm@11.5.1
