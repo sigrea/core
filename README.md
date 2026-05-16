@@ -138,9 +138,9 @@ level. Official adapters keep them in sync with component props. If you use core
 directly, call `updateMoleculeProps(instance, nextProps)` to replace them.
 
 Read props through `props.propName`. Destructuring a prop value copies the
-current value and loses reactivity. Use `toSignal(props, "propName")` when you
-need to pass a prop around as a
-`ReadonlySignal`.
+current value and loses reactivity. Use `toSignal(props, "propName")` only when
+an internal helper needs a prop-shaped `ReadonlySignal`; do not return prop
+mirrors from a molecule just because a prop is reactive.
 
 The props object must be a plain object. Sigrea syncs enumerable top-level
 properties and passes nested values as-is.
@@ -182,18 +182,16 @@ type DialogEvents = {
 const DialogMolecule = molecule<DialogProps>((props) => {
   const { send, on } = createEvents<DialogEvents>();
   const isOpen = toSignal(props, "open");
-  const disabled = computed(() => props.disabled ?? false);
+  const isDisabled = computed(() => props.disabled ?? false);
 
   const requestOpenChange = async (next: boolean) => {
-    if (disabled.value) {
+    if (isDisabled.value || isOpen.value === next) {
       return;
     }
     await send("update:open", next);
   };
 
   return {
-    disabled,
-    isOpen,
     on,
     requestOpenChange,
   };
@@ -217,46 +215,50 @@ const DialogControllerMolecule = molecule(() => {
 ```
 
 This pattern keeps the controlled value in a parent or controller molecule. The
-child molecule reads `props.open` as `isOpen` and sends `update:open` when it wants its
+child molecule reads props internally and sends `update:open` when it wants its
 owner to replace the value. Framework adapters mount the controller molecule.
-Components read the signals and computed values it returns; raw molecule events
-stay inside the molecule graph.
+Components read the controller-owned signals and computed values it returns; raw
+molecule events stay inside the molecule graph.
 
 ### Composing molecules with `get()`
 
 ```ts
-import { get, molecule, toSignal } from "@sigrea/core";
+import { computed, get, molecule } from "@sigrea/core";
 
 interface TabIndicatorProps {
   selectedValue: string;
+  value: string;
 }
 
 const TabIndicatorMolecule = molecule<TabIndicatorProps>((props) => {
+  const isSelected = computed(() => props.selectedValue === props.value);
+
   return {
-    selectedValue: toSignal(props, "selectedValue"),
+    isSelected,
   };
 });
 
 interface TabsProps {
   selectedValue: string;
+  indicatorValue: string;
 }
 
 const TabsMolecule = molecule<TabsProps>((props) => {
   const indicator = get(TabIndicatorMolecule, () => ({
+    value: props.indicatorValue,
     selectedValue: props.selectedValue,
   }));
 
   return {
     indicator,
-    selectedValue: toSignal(props, "selectedValue"),
   };
 });
 ```
 
 Notes:
 
-- Use `computed()` for derived state, and `toSignal(props, "key")` when you need
-  to pass a reactive prop as a signal to another API.
+- Use `computed()` for derived state. Use `toSignal(props, "key")` only when an
+  internal helper needs a signal view of a prop, not as a default return shape.
 - Use `get()` to create and own child molecule instances.
 - `get()` must be called synchronously during molecule setup.
 - `get(Child, props)` passes a static props snapshot. Use

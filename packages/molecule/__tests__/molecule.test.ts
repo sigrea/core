@@ -87,35 +87,45 @@ describe("molecule", () => {
 		expect(capturedProps).toBe(initialProps);
 	});
 
-	it("exposes live props as keyed readonly signals", () => {
+	it("tracks live props as keyed readonly signals", () => {
+		let disabledSignal!: { readonly value: boolean | undefined };
+		let isOpenSignal!: { readonly value: boolean };
+
 		const DialogMolecule = molecule(
 			(props: { disabled?: boolean; open: boolean }) => {
 				const disabled = toSignal(props, "disabled");
 				const isOpen = toSignal(props, "open");
+				disabledSignal = disabled;
+				isOpenSignal = isOpen;
 
-				return { disabled, isOpen };
+				return {
+					read() {
+						return {
+							disabled: disabled.value,
+							isOpen: isOpen.value,
+						};
+					},
+				};
 			},
 		);
 
 		const instance = DialogMolecule({ open: false });
 		trackMolecule(instance);
 
-		expect(instance.isOpen.value).toBe(false);
-		expect(instance.disabled.value).toBeUndefined();
+		expect(instance.read()).toEqual({ disabled: undefined, isOpen: false });
 
 		updateMoleculeProps(instance, { disabled: true, open: true });
 
-		expect(instance.isOpen.value).toBe(true);
-		expect(instance.disabled.value).toBe(true);
+		expect(instance.read()).toEqual({ disabled: true, isOpen: true });
 
 		updateMoleculeProps(instance, { open: false });
 
-		expect(instance.isOpen.value).toBe(false);
-		expect(instance.disabled.value).toBeUndefined();
+		expect(instance.read()).toEqual({ disabled: undefined, isOpen: false });
 
 		expect(() => {
-			(instance.isOpen as { value: boolean }).value = true;
+			(isOpenSignal as { value: boolean }).value = true;
 		}).toThrow("Cannot assign to a readonly computed value.");
+		expect(disabledSignal.value).toBeUndefined();
 	});
 
 	it("rejects non-plain object props containers", () => {
