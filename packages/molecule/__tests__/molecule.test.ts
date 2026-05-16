@@ -112,6 +112,10 @@ describe("molecule", () => {
 
 		expect(instance.open.value).toBe(false);
 		expect(instance.disabled.value).toBeUndefined();
+
+		expect(() => {
+			(instance.open as { value: boolean }).value = true;
+		}).toThrow("Cannot assign to a readonly computed value.");
 	});
 
 	it("rejects non-plain object props containers", () => {
@@ -672,7 +676,7 @@ describe("molecule", () => {
 
 	it("passes props to child molecule instances via get", () => {
 		const ChildMolecule = molecule((props: { id: number }) => {
-			const identifier = signal(props.id);
+			const identifier = computed(() => props.id);
 			return { identifier };
 		});
 
@@ -684,10 +688,16 @@ describe("molecule", () => {
 		const parent = ParentMolecule({ childId: 42 });
 		trackMolecule(parent);
 		expect(parent.child.identifier.value).toBe(42);
+
+		updateMoleculeProps(parent, { childId: 7 });
+
+		expect(parent.child.identifier.value).toBe(42);
 	});
 
 	it("updates child molecule props when get receives a props getter", () => {
+		let childSetupRuns = 0;
 		const ChildMolecule = molecule((props: { id: number }) => {
+			childSetupRuns += 1;
 			const identifier = computed(() => props.id);
 			return { identifier };
 		});
@@ -705,6 +715,39 @@ describe("molecule", () => {
 		updateMoleculeProps(parent, { childId: 7 });
 
 		expect(parent.child.identifier.value).toBe(7);
+		expect(childSetupRuns).toBe(1);
+	});
+
+	it("tracks only top-level props through child props getters", () => {
+		const ChildMolecule = molecule(
+			(props: { options: { placement: string } }) => {
+				const placement = computed(() => props.options.placement);
+				return { placement };
+			},
+		);
+
+		const ParentMolecule = molecule(
+			(props: { options: { placement: string } }) => {
+				const child = get(ChildMolecule, () => ({
+					options: props.options,
+				}));
+				return { child };
+			},
+		);
+
+		const options = { placement: "start" };
+		const parent = ParentMolecule({ options });
+		trackMolecule(parent);
+
+		expect(parent.child.placement.value).toBe("start");
+
+		options.placement = "end";
+
+		expect(parent.child.placement.value).toBe("start");
+
+		updateMoleculeProps(parent, { options: { placement: "end" } });
+
+		expect(parent.child.placement.value).toBe("end");
 	});
 
 	it("rejects invalid child props returned from a props getter", () => {
