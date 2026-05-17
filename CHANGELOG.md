@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.7.1
+
+[compare changes](https://github.com/sigrea/core/compare/v0.7.0...v0.7.1)
+
+### 🏡 Chore
+
+- Harden core contract and release checks ([#56](https://github.com/sigrea/core/pull/56))
+- Refresh browser compatibility data ([#57](https://github.com/sigrea/core/pull/57))
+- Update alien-signals runtime integration ([#58](https://github.com/sigrea/core/pull/58))
+
+### ❤️ Contributors
+
+- Aose ([@aose-yuu](https://github.com/aose-yuu))
+
 ## v0.7.0
 
 [compare changes](https://github.com/sigrea/core/compare/v0.6.0...v0.7.0)
