@@ -17,7 +17,7 @@ needed to build hooks.
 Inspired by:
 - [Vue 3](https://vuejs.org/) — deep reactivity and scope control
 - [nanostores](https://github.com/nanostores/nanostores) — store-centric architecture
-- [bunshi](https://github.com/saasquatch/bunshi) — molecule and composition API design
+- [bunshi](https://github.com/saasquatch/bunshi) — molecule concepts and `get()`-based parent-child graph design
 
 ## Table of Contents
 
@@ -138,9 +138,9 @@ level. Official adapters keep them in sync with component props. If you use core
 directly, call `updateMoleculeProps(instance, nextProps)` to replace them.
 
 Read props through `props.propName`. Destructuring a prop value copies the
-current value and loses reactivity. Use `toSignal(props, "propName")` when you
-need to pass a prop around as a
-`ReadonlySignal`.
+current value and loses reactivity. Use `toSignal(props, "propName")` only when
+an internal helper needs a prop-shaped `ReadonlySignal`; do not return prop
+mirrors from a molecule just because a prop is reactive.
 
 The props object must be a plain object. Sigrea syncs enumerable top-level
 properties and passes nested values as-is.
@@ -176,92 +176,96 @@ interface DialogProps {
 }
 
 type DialogEvents = {
-  "update:open": [open: boolean];
+  "update:open": [next: boolean];
 };
 
 const DialogMolecule = molecule<DialogProps>((props) => {
   const { send, on } = createEvents<DialogEvents>();
-  const open = toSignal(props, "open");
-  const disabled = computed(() => props.disabled ?? false);
+  const isOpen = toSignal(props, "open");
+  const isDisabled = computed(() => props.disabled ?? false);
 
-  const requestOpenChange = async (nextOpen: boolean) => {
-    if (disabled.value) {
+  const requestOpenChange = async (next: boolean) => {
+    if (isDisabled.value || isOpen.value === next) {
       return;
     }
-    await send("update:open", nextOpen);
+    await send("update:open", next);
   };
 
   return {
-    disabled,
     on,
-    open,
     requestOpenChange,
   };
 });
 
 const DialogControllerMolecule = molecule(() => {
-  const open = signal(false);
+  const isOpen = signal(false);
   const dialog = get(DialogMolecule, () => ({
-    open: open.value,
+    open: isOpen.value,
   }));
 
-  dialog.on("update:open", (nextOpen) => {
-    open.value = nextOpen;
+  dialog.on("update:open", (next) => {
+    isOpen.value = next;
   });
 
   return {
-    open: readonly(open),
+    isOpen: readonly(isOpen),
     requestOpenChange: dialog.requestOpenChange,
   };
 });
 ```
 
 This pattern keeps the controlled value in a parent or controller molecule. The
-child molecule reads `props.open` and sends `update:open` when it wants its
+child molecule reads props internally and sends `update:open` when it wants its
 owner to replace the value. Framework adapters mount the controller molecule.
-Components read the signals and computed values it returns; raw molecule events
-stay inside the molecule graph.
+Components read the controller-owned signals and computed values it returns; raw
+molecule events stay inside the molecule graph.
 
 ### Composing molecules with `get()`
 
 ```ts
-import { get, molecule, toSignal } from "@sigrea/core";
+import { computed, get, molecule } from "@sigrea/core";
 
 interface TabIndicatorProps {
   selectedValue: string;
+  value: string;
 }
 
 const TabIndicatorMolecule = molecule<TabIndicatorProps>((props) => {
+  const isSelected = computed(() => props.selectedValue === props.value);
+
   return {
-    selectedValue: toSignal(props, "selectedValue"),
+    isSelected,
   };
 });
 
 interface TabsProps {
   selectedValue: string;
+  indicatorValue: string;
 }
 
 const TabsMolecule = molecule<TabsProps>((props) => {
   const indicator = get(TabIndicatorMolecule, () => ({
+    value: props.indicatorValue,
     selectedValue: props.selectedValue,
   }));
 
   return {
     indicator,
-    selectedValue: toSignal(props, "selectedValue"),
   };
 });
 ```
 
 Notes:
 
-- Use `computed()` for derived state, and `toSignal(props, "key")` when you need
-  to pass a reactive prop as a signal to another API.
+- Use `computed()` for derived state. Use `toSignal(props, "key")` only when an
+  internal helper needs a signal view of a prop, not as a default return shape.
 - Use `get()` to create and own child molecule instances.
 - `get()` must be called synchronously during molecule setup.
 - `get(Child, props)` passes a static props snapshot. Use
   `get(Child, () => ({ ... }))` to derive child props reactively from parent
-  props.
+  props. The child instance is not recreated when live props change.
+- Props sync is top-level only. Nested objects are passed through as values;
+  replace the top-level prop when a nested value must notify dependents.
 - `onUnmount()` callbacks and `watch()` effects are tied to the mount lifecycle.
 - `watch()` and `watchEffect()` return callable stop handles; calling a handle
   directly is equivalent to calling `handle.stop()`, and each handle also
@@ -373,7 +377,7 @@ export default defineConfig(({ command }) => ({
 If you use mise:
 
 - `mise trust -y` — trust `mise.toml` (first run only).
-- `mise run ci` — run CI-equivalent checks locally.
+- `pnpm -s cicheck` — run CI-equivalent checks locally.
 - `mise run notes` — preview release notes (optional).
 
 You can also run pnpm scripts directly:
@@ -383,7 +387,7 @@ You can also run pnpm scripts directly:
 - `pnpm typecheck` — run TypeScript type checking.
 - `pnpm test:coverage` — collect coverage.
 - `pnpm build` — build the package.
-- `pnpm cicheck` — run CI checks locally.
+- `pnpm -s cicheck` — run CI checks locally.
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for workflow details.
 

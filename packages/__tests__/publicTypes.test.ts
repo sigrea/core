@@ -73,6 +73,11 @@ describe("public types", () => {
 		expectTypeOf(nestedSignal).toEqualTypeOf<
 			ReadonlySignal<{ flag: boolean }>
 		>();
+		const assertToSignalReadonly = () => {
+			// @ts-expect-error toSignal returns a readonly view.
+			nestedSignal.value = { flag: true };
+		};
+		void assertToSignalReadonly;
 
 		const numberSource: WatchSource<number> = count;
 		const objectSource: WatchSource<{ count: number }> = readonlyDeepState;

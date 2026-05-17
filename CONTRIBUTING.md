@@ -14,6 +14,7 @@ TypeScript strict mode, Biome for formatting, Vitest for tests.
 `pnpm build` — build the library via unbuild
 `pnpm format` — check formatting (no writes)
 `pnpm format:fix` — apply formatting
+`pnpm -s cicheck` — run test, typecheck, build, smoke, and format checks
 
 ## Commit Convention
 
@@ -27,16 +28,15 @@ Changelogen reads Conventional Commits directly, so please keep commit messages 
 ## Pull Requests
 
 Ensure the following before requesting review:
-CI passes (test/typecheck/build/format) and the PR title follows Conventional Commits.
+`pnpm -s cicheck` passes and the PR title follows Conventional Commits.
 
 ## Release Workflow
 
-This repository now uses [changelogen](https://github.com/unjs/changelogen) to infer the next semantic version from Conventional Commits, update `CHANGELOG.md`, and create the release commit plus tag. The workflow is intentionally linear so that a single maintainer can ship safely end to end.
+This repository uses [changelogen](https://github.com/unjs/changelogen) to update `CHANGELOG.md` and create the release commit plus tag. Releases use an explicit version so maintainers do not depend on an inferred bump.
 
-1. Ensure `main` is up to date and clean. Run `pnpm changelog --no-output` if you want to preview the generated notes without touching the tree.
-2. Execute `pnpm release`. This script runs `pnpm test`, `pnpm build`, and `changelogen --release` in sequence. The command bumps the version in `package.json`, rewrites `CHANGELOG.md`, and creates a `chore(release): vX.Y.Z` commit alongside the annotated `vX.Y.Z` tag.
-   - If you want to force a bump level or a specific version, run changelogen directly (recommended): `pnpm exec changelogen --release --minor` or `pnpm exec changelogen --release -r 0.4.0`.
-3. Push the commit and tag together: `git push origin main --follow-tags`. If you need to stage multiple release commits, push in chronological order so tags stay in sync.
-4. Tag pushes trigger `.github/workflows/publish.yml` automatically. The job runs on the `release` environment, installs dependencies, executes tests/type checks/build, publishes to npm via OIDC trusted publishing, and then calls `pnpm exec changelogen gh release vX.Y.Z --token $GITHUB_TOKEN` to sync the GitHub Release body with the freshly updated `CHANGELOG.md`.
+1. Ensure `main` is up to date and clean. Run `mise run notes` if you want to preview the generated notes without touching the tree.
+2. Run `SIGREA_RELEASE_VERSION=x.y.z mise run release_version`. This runs `pnpm -s cicheck`, updates the changelog, amends the release commit if formatting changes are needed, and creates the annotated `vX.Y.Z` tag.
+3. Push the commit and tag together with `mise run push_release`. The task uses `git push origin main --follow-tags`.
+4. Tag pushes trigger `.github/workflows/publish.yml`. The job runs on the `release` environment, installs dependencies, runs `pnpm -s cicheck`, publishes to npm with OIDC trusted publishing, and then syncs the GitHub Release body with `pnpm exec changelogen gh release`.
 
 If the publish workflow fails, fix the root cause and re-run the job from the GitHub Actions UI. Avoid creating a new tag unless you intend to cut a new release. If you must roll back, delete the tag locally and remotely, revert the release commit, and start over from step 1.
