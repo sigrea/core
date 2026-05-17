@@ -184,16 +184,30 @@ const DialogMolecule = molecule<DialogProps>((props) => {
   const isOpen = toSignal(props, "open");
   const isDisabled = computed(() => props.disabled ?? false);
 
-  const requestOpenChange = async (next: boolean) => {
+  const emitOpenChange = async (next: boolean) => {
     if (isDisabled.value || isOpen.value === next) {
       return;
     }
     await send("update:open", next);
   };
 
+  const open = () => {
+    return emitOpenChange(true);
+  };
+
+  const close = () => {
+    return emitOpenChange(false);
+  };
+
+  const toggle = () => {
+    return emitOpenChange(!isOpen.value);
+  };
+
   return {
     on,
-    requestOpenChange,
+    open,
+    close,
+    toggle,
   };
 });
 
@@ -209,7 +223,9 @@ const DialogControllerMolecule = molecule(() => {
 
   return {
     isOpen: readonly(isOpen),
-    requestOpenChange: dialog.requestOpenChange,
+    open: dialog.open,
+    close: dialog.close,
+    toggle: dialog.toggle,
   };
 });
 ```
@@ -225,13 +241,13 @@ molecule events stay inside the molecule graph.
 ```ts
 import { computed, get, molecule } from "@sigrea/core";
 
-interface TabIndicatorProps {
-  selectedValue: string;
-  value: string;
+interface TabItemProps {
+  selectedId: string;
+  id: string;
 }
 
-const TabIndicatorMolecule = molecule<TabIndicatorProps>((props) => {
-  const isSelected = computed(() => props.selectedValue === props.value);
+const TabItemMolecule = molecule<TabItemProps>((props) => {
+  const isSelected = computed(() => props.selectedId === props.id);
 
   return {
     isSelected,
@@ -239,18 +255,18 @@ const TabIndicatorMolecule = molecule<TabIndicatorProps>((props) => {
 });
 
 interface TabsProps {
-  selectedValue: string;
-  indicatorValue: string;
+  selectedId: string;
+  itemId: string;
 }
 
 const TabsMolecule = molecule<TabsProps>((props) => {
-  const indicator = get(TabIndicatorMolecule, () => ({
-    value: props.indicatorValue,
-    selectedValue: props.selectedValue,
+  const item = get(TabItemMolecule, () => ({
+    id: props.itemId,
+    selectedId: props.selectedId,
   }));
 
   return {
-    indicator,
+    isItemSelected: item.isSelected,
   };
 });
 ```
