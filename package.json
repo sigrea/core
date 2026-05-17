@@ -58,6 +58,7 @@
 		"@biomejs/biome": "1.9.4",
 		"@types/node": "^24.0.0",
 		"@vitest/coverage-v8": "^3.2.4",
+		"baseline-browser-mapping": "^2.10.30",
 		"changelogen": "^0.6.2",
 		"lefthook": "1.13.6",
 		"tsx": "^4.20.5",
