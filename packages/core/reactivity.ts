@@ -1,16 +1,28 @@
-import {
-	type Link,
-	ReactiveFlags,
-	type ReactiveNode,
-	createReactiveSystem,
-} from "alien-signals/system";
+import { ReactiveFlags, createReactiveSystem } from "alien-signals/system";
 
 import type { Computed } from "./computed";
 import type { Signal } from "./signal";
 import type { SignalNode } from "./signal";
 
 export { ReactiveFlags };
-export type { Link, ReactiveNode };
+
+export interface ReactiveNode {
+	deps?: Link;
+	depsTail?: Link;
+	subs?: Link;
+	subsTail?: Link;
+	flags: ReactiveFlags;
+}
+
+export interface Link {
+	version: number;
+	dep: ReactiveNode;
+	sub: ReactiveNode;
+	prevSub: Link | undefined;
+	nextSub: Link | undefined;
+	prevDep: Link | undefined;
+	nextDep: Link | undefined;
+}
 
 export enum SignalFlags {
 	IS_SIGNAL = "__v_isSignal",
@@ -232,21 +244,37 @@ export function trigger(
 	triggerEffects(depsToTrigger);
 }
 
-const { link, unlink, propagate, checkDirty, shallowPropagate } =
-	createReactiveSystem({
-		update(node: ReactiveNode & { update(): boolean }) {
-			return node.update();
-		},
-		notify(effect: Effect) {
-			queue.push(effect);
-		},
-		unwatched() {},
-	});
+const system = createReactiveSystem({
+	update(node) {
+		return (node as ReactiveNode & { update(): boolean }).update();
+	},
+	notify(effect) {
+		queue.push(effect as Effect);
+	},
+	unwatched() {},
+});
+
+const link = system.link as (
+	dep: ReactiveNode,
+	sub: ReactiveNode,
+	version: number,
+) => void;
+const unlink = system.unlink as (
+	link: Link,
+	sub?: ReactiveNode,
+) => Link | undefined;
+const propagate = system.propagate as (link: Link, innerWrite: boolean) => void;
+const checkDirty = system.checkDirty as (
+	link: Link,
+	sub: ReactiveNode,
+) => boolean;
+const shallowPropagate = system.shallowPropagate as (link: Link) => void;
 
 export { link, unlink, propagate, shallowPropagate };
 
 let cycle = 0;
 let batchDepth = 0;
+let reactiveExecutionDepth = 0;
 let activeSub: ReactiveNode | undefined;
 
 const queue: Effect[] = [];
@@ -285,6 +313,18 @@ export function getActiveSubscriber(): ReactiveNode | undefined {
 
 export function setActiveSubscriber(node: ReactiveNode | undefined): void {
 	activeSub = node;
+}
+
+export function enterReactiveExecution(): void {
+	reactiveExecutionDepth += 1;
+}
+
+export function exitReactiveExecution(): void {
+	reactiveExecutionDepth -= 1;
+}
+
+export function isRunningReactiveExecution(): boolean {
+	return reactiveExecutionDepth > 0;
 }
 
 export function startBatch(): void {
@@ -354,9 +394,11 @@ export class Effect<T = unknown> implements ReactiveNode {
 		this.flags = ReactiveFlags.Watching | ReactiveFlags.RecursedCheck;
 		const previous = getActiveSubscriber();
 		setActiveSubscriber(this);
+		enterReactiveExecution();
 		try {
 			return this.fn();
 		} finally {
+			exitReactiveExecution();
 			setActiveSubscriber(previous);
 			this.flags &= ~ReactiveFlags.RecursedCheck;
 			let toRemove =

@@ -8,6 +8,7 @@ import {
 	getCurrentCycle,
 	hasChanged,
 	isBatching,
+	isRunningReactiveExecution,
 	link,
 	propagate,
 	setDepFactory,
@@ -50,7 +51,7 @@ export class SignalNode<T = unknown> implements ReactiveNode {
 		this.flags = ReactiveFlags.Mutable | ReactiveFlags.Dirty;
 		const subs = this.subs;
 		if (subs !== undefined) {
-			propagate(subs);
+			propagate(subs, isRunningReactiveExecution());
 			if (!isBatching()) {
 				flushSchedulerQueue();
 			}
