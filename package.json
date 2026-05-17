@@ -52,7 +52,7 @@
 		"cicheck": "pnpm -s test && pnpm -s typecheck && pnpm -s build && pnpm -s smoke && pnpm -s format"
 	},
 	"dependencies": {
-		"alien-signals": "^3.1.1"
+		"alien-signals": "^3.2.1"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.9.4",
