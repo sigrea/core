@@ -1,30 +1,30 @@
 # @sigrea/core
 
 <p align="center">
-  <img src="./images/sigrea_character_mendako.png" alt="Sigrea mascot" width="240" />
+  <img src="https://raw.githubusercontent.com/sigrea/core/main/images/sigrea_character_mendako.png" alt="Sigrea mascot" width="240" />
 </p>
 
-Sigrea is a small reactive core built on [alien-signals](https://github.com/stackblitz/alien-signals).
-It adds deep reactivity and scope-based lifecycles, and exposes the primitives
-needed to build hooks.
+Sigrea core provides reactive primitives, deep signals, and scope-based
+molecule lifecycles. It is built on
+[alien-signals](https://github.com/stackblitz/alien-signals).
 
 - **Core primitives.** `signal`, `computed`, `toSignal`, `deepSignal`, `watch`, and `watchEffect`.
 - **Lifecycles.** `Scope`, `onMount`, and `onUnmount` for cleanup boundaries.
 - **Molecules.** `molecule()` is a lifecycle container that doesn't render UI.
 - **Composition.** Build molecule trees via `get()`.
-- **Testing.** `trackMolecule` + `disposeTrackedMolecules` helps reproduce lifecycles in tests.
+- **Testing.** `trackMolecule` + `disposeTrackedMolecules` helps clean up molecule instances in tests.
 
 Inspired by:
-- [Vue 3](https://vuejs.org/) — deep reactivity and scope control
-- [nanostores](https://github.com/nanostores/nanostores) — store-centric architecture
-- [bunshi](https://github.com/saasquatch/bunshi) — molecule concepts and `get()`-based parent-child graph design
+- [Vue 3](https://vuejs.org/): deep reactivity and scope control
+- [nanostores](https://github.com/nanostores/nanostores): store-centric architecture
+- [bunshi](https://github.com/saasquatch/bunshi): molecule concepts and `get()`-based parent-child graph design
 
 ## Table of Contents
 
 - [Install](#install)
 - [Adapters](#adapters)
 - [Quick Start](#quick-start)
-- [Hooks](#hooks)
+- [Plain Helpers](#plain-helpers)
 - [Molecules](#molecules)
 - [Testing](#testing)
 - [Handling Scope Cleanup Errors](#handling-scope-cleanup-errors)
@@ -37,12 +37,15 @@ Inspired by:
 npm install @sigrea/core
 ```
 
+Install `@sigrea/use` too if you copy examples that use helpers from that
+package, such as `createEvents`.
+
 ## Adapters
 
 Official adapters connect Sigrea molecules and signals to UI frameworks:
 
-- **[@sigrea/vue](https://github.com/sigrea/vue)** — Vue 3.4+ composables (`useMolecule`, `useSignal`, `useMutableSignal`, `useDeepSignal`)
-- **[@sigrea/react](https://github.com/sigrea/react)** — React 18+ hooks (`useMolecule`, `useSignal`, `useComputed`, `useDeepSignal`)
+- **[@sigrea/vue](https://github.com/sigrea/vue)**: Vue 3.4+ composables (`useMolecule`, `useSignal`, `useMutableSignal`, `useDeepSignal`)
+- **[@sigrea/react](https://github.com/sigrea/react)**: React 18+ hooks (`useMolecule`, `useSignal`, `useComputed`, `useDeepSignal`)
 
 Each adapter binds molecule lifecycles to component lifecycles and synchronizes signal subscriptions with the framework's reactivity system.
 
@@ -60,11 +63,11 @@ count.value = 3;
 console.log(doubled.value); // 6
 ```
 
-## Hooks
+## Plain Helpers
 
-Hooks are plain functions built from the core primitives.
+Plain helpers are ordinary functions built from the core primitives.
 This package does not include UI bindings.
-In UI apps, you usually call hooks inside a molecule.
+In UI apps, you usually call these helpers inside a molecule.
 Then connect the molecule to the UI layer via an adapter.
 `watch()` and `watchEffect()` return callable stop handles with `pause()` and
 `resume()` methods.
@@ -152,7 +155,7 @@ Official adapters mount and unmount molecules automatically.
 If you use the core package directly, call `mountMolecule()` and `unmountMolecule()`.
 
 Inside `setup`, you can call hooks or use the core primitives directly.
-Child molecules are internal dependencies—prefer returning only the outputs
+Child molecules are internal dependencies. Prefer returning only the outputs
 (signals, computed values, actions) that consumers need.
 
 ### Controlled values with a controller molecule
@@ -179,7 +182,7 @@ type DialogEvents = {
   "update:open": [next: boolean];
 };
 
-const DialogMolecule = molecule<DialogProps>((props) => {
+const DialogMolecule = molecule((props: DialogProps) => {
   const { send, on } = createEvents<DialogEvents>();
   const isOpen = toSignal(props, "open");
   const isDisabled = computed(() => props.disabled ?? false);
@@ -232,7 +235,7 @@ const DialogControllerMolecule = molecule(() => {
 
 This pattern keeps the controlled value in a parent or controller molecule. The
 child molecule reads props internally and sends `update:open` when it wants its
-owner to replace the value. Framework adapters mount the controller molecule.
+controller to replace the value. Framework adapters mount the controller molecule.
 Components read the controller-owned signals and computed values it returns; raw
 molecule events stay inside the molecule graph.
 
@@ -246,7 +249,7 @@ interface TabItemProps {
   id: string;
 }
 
-const TabItemMolecule = molecule<TabItemProps>((props) => {
+const TabItemMolecule = molecule((props: TabItemProps) => {
   const isSelected = computed(() => props.selectedId === props.id);
 
   return {
@@ -259,7 +262,7 @@ interface TabsProps {
   itemId: string;
 }
 
-const TabsMolecule = molecule<TabsProps>((props) => {
+const TabsMolecule = molecule((props: TabsProps) => {
   const item = get(TabItemMolecule, () => ({
     id: props.itemId,
     selectedId: props.selectedId,
@@ -392,21 +395,21 @@ export default defineConfig(({ command }) => ({
 
 If you use mise:
 
-- `mise trust -y` — trust `mise.toml` (first run only).
-- `pnpm -s cicheck` — run CI-equivalent checks locally.
-- `mise run notes` — preview release notes (optional).
+- `mise trust -y` trusts `mise.toml` (first run only).
+- `pnpm -s cicheck` runs CI-equivalent checks locally.
+- `mise run notes` previews release notes (optional).
 
 You can also run pnpm scripts directly:
 
-- `pnpm install` — install dependencies.
-- `pnpm test` — run tests.
-- `pnpm typecheck` — run TypeScript type checking.
-- `pnpm test:coverage` — collect coverage.
-- `pnpm build` — build the package.
-- `pnpm -s cicheck` — run CI checks locally.
+- `pnpm install` installs dependencies.
+- `pnpm test` runs tests.
+- `pnpm typecheck` runs TypeScript type checking.
+- `pnpm test:coverage` collects coverage.
+- `pnpm build` builds the package.
+- `pnpm -s cicheck` runs CI checks locally.
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for workflow details.
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT. See [LICENSE](./LICENSE).
