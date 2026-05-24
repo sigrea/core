@@ -37,8 +37,8 @@ Inspired by:
 npm install @sigrea/core
 ```
 
-Install `@sigrea/use` too if you copy examples that use helpers from that
-package, such as `createEvents`.
+Install [`@sigrea/use`](https://www.npmjs.com/package/@sigrea/use) too if you
+copy examples that use helpers from that package, such as `createEvents`.
 
 ## Adapters
 
@@ -160,7 +160,9 @@ Child molecules are internal dependencies. Prefer returning only the outputs
 
 ### Controlled values with a controller molecule
 
-This example uses `createEvents` from `@sigrea/use`.
+This example uses
+[`createEvents`](https://github.com/sigrea/use/blob/main/packages/use/createEvents/index.md)
+from `@sigrea/use`.
 
 ```ts
 import {
