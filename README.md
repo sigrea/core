@@ -1,23 +1,30 @@
 # @sigrea/core
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/sigrea/core/main/images/sigrea_character_mendako.png" alt="Sigrea mascot" width="240" />
+  <img
+    src="https://raw.githubusercontent.com/sigrea/core/main/images/sigrea_character_mendako.png"
+    alt="Sigrea mascot"
+    width="240"
+  />
 </p>
 
 Sigrea core provides reactive primitives, deep signals, and scope-based
 molecule lifecycles. It is built on
 [alien-signals](https://github.com/stackblitz/alien-signals).
 
-- **Core primitives.** `signal`, `computed`, `toSignal`, `deepSignal`, `watch`, and `watchEffect`.
+- **Core primitives.** `signal`, `computed`, `toSignal`, `deepSignal`,
+  `watch`, and `watchEffect`.
 - **Lifecycles.** `Scope`, `onMount`, and `onUnmount` for cleanup boundaries.
 - **Molecules.** `molecule()` is a lifecycle container that doesn't render UI.
 - **Composition.** Build molecule trees via `get()`.
-- **Testing.** `trackMolecule` + `disposeTrackedMolecules` helps clean up molecule instances in tests.
+- **Testing.** `trackMolecule` + `disposeTrackedMolecules` helps clean up
+  molecule instances in tests.
 
 Inspired by:
 - [Vue 3](https://vuejs.org/): deep reactivity and scope control
 - [nanostores](https://github.com/nanostores/nanostores): store-centric architecture
-- [bunshi](https://github.com/saasquatch/bunshi): molecule concepts and `get()`-based parent-child graph design
+- [bunshi](https://github.com/saasquatch/bunshi): molecule concepts and
+  `get()`-based parent-child graph design
 
 ## Table of Contents
 
@@ -44,10 +51,13 @@ copy examples that use helpers from that package, such as `createEvents`.
 
 Official adapters connect Sigrea molecules and signals to UI frameworks:
 
-- **[@sigrea/vue](https://github.com/sigrea/vue)**: Vue 3.4+ composables (`useMolecule`, `useSignal`, `useMutableSignal`, `useDeepSignal`)
-- **[@sigrea/react](https://github.com/sigrea/react)**: React 18+ hooks (`useMolecule`, `useSignal`, `useComputed`, `useDeepSignal`)
+- **[@sigrea/vue](https://github.com/sigrea/vue)**: Vue 3.4+ composables
+  (`useMolecule`, `useSignal`, `useMutableSignal`, `useDeepSignal`)
+- **[@sigrea/react](https://github.com/sigrea/react)**: React 18+ hooks
+  (`useMolecule`, `useSignal`, `useComputed`, `useDeepSignal`)
 
-Each adapter binds molecule lifecycles to component lifecycles and synchronizes signal subscriptions with the framework's reactivity system.
+Each adapter binds molecule lifecycles to component lifecycles and synchronizes
+signal subscriptions with the framework's reactivity system.
 
 ## Quick Start
 
@@ -160,9 +170,8 @@ Child molecules are internal dependencies. Prefer returning only the outputs
 
 ### Controlled values with a controller molecule
 
-This example uses
-[`createEvents`](https://github.com/sigrea/use/blob/main/packages/use/createEvents/index.md)
-from `@sigrea/use`.
+This example uses [`createEvents`][create-events] from
+[`@sigrea/use`][sigrea-use].
 
 ```ts
 import {
@@ -366,8 +375,10 @@ setScopeCleanupErrorHandler((error, context) => {
 The handler receives `error` and `context`.
 `context` includes `scopeId`, `phase`, `index`, and `total`.
 
-Return `ScopeCleanupErrorResponse.Suppress` to prevent the error from being thrown.
-Return `ScopeCleanupErrorResponse.Propagate` to rethrow immediately for synchronous errors.
+Return `ScopeCleanupErrorResponse.Suppress` to prevent the error from being
+thrown.
+Return `ScopeCleanupErrorResponse.Propagate` to rethrow immediately for
+synchronous errors.
 
 ## Development
 
@@ -410,8 +421,12 @@ You can also run pnpm scripts directly:
 - `pnpm build` builds the package.
 - `pnpm -s cicheck` runs CI checks locally.
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for workflow details.
+See [CONTRIBUTING.md](https://github.com/sigrea/core/blob/main/CONTRIBUTING.md)
+for workflow details.
 
 ## License
 
 MIT. See [LICENSE](./LICENSE).
+
+[create-events]: https://github.com/sigrea/use/tree/main/packages/use/createEvents
+[sigrea-use]: https://www.npmjs.com/package/@sigrea/use
