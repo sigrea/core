@@ -166,8 +166,6 @@ function publishRelease() {
 			run("npm", ["run", "smoke"], { cwd: unpacked });
 			run("npm", ["publish", tarball, "--access", "public"]);
 		}
-		const notesFile = join(directory, "notes.md");
-		writeFileSync(notesFile, notes);
 		const existing = spawnSync(
 			"gh",
 			["api", "--include", `repos/${repo}/releases/tags/${tag}`],
@@ -176,34 +174,26 @@ function publishRelease() {
 			},
 		);
 		if (existing.error) throw existing.error;
-		if (existing.status === 0) {
-			run("gh", [
-				"release",
-				"edit",
-				tag,
-				"--repo",
-				repo,
-				"--notes-file",
-				notesFile,
-			]);
-		} else if (/^HTTP\/\S+ 404\b/m.test(existing.stdout)) {
-			run("gh", [
-				"release",
-				"create",
-				tag,
-				"--repo",
-				repo,
-				"--verify-tag",
-				"--title",
-				tag,
-				"--notes-file",
-				notesFile,
-			]);
-		} else {
+		if (existing.status === 0) return;
+		if (!/^HTTP\/\S+ 404\b/m.test(existing.stdout)) {
 			throw new Error(
 				existing.stderr || "Unable to look up the GitHub Release.",
 			);
 		}
+		const notesFile = join(directory, "notes.md");
+		writeFileSync(notesFile, notes);
+		run("gh", [
+			"release",
+			"create",
+			tag,
+			"--repo",
+			repo,
+			"--verify-tag",
+			"--title",
+			tag,
+			"--notes-file",
+			notesFile,
+		]);
 	} finally {
 		rmSync(directory, { recursive: true, force: true });
 	}

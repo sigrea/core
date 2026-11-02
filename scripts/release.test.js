@@ -120,6 +120,7 @@ if (tool === 'vp') {
   if (state.githubStatus !== 200) process.exit(1);
  } else {
   if (state.failRelease) process.exit(1);
+  state.releaseBody=readFileSync(args[args.indexOf('--notes-file')+1], 'utf8');
   state.githubStatus=200; save();
  }
 }
@@ -156,6 +157,9 @@ if (tool === 'vp') {
 					...update,
 				}),
 			);
+		},
+		releaseBody() {
+			return JSON.parse(readFileSync(stateFile, "utf8")).releaseBody;
 		},
 		events() {
 			return readFileSync(logFile, "utf8")
@@ -408,8 +412,7 @@ test("retries release creation after publishing without publishing npm twice", (
 			.events()
 			.filter((event) => event.tool === "npm" && event.args[0] === "publish"),
 	).toHaveLength(1);
-	expect(f.run("publish").status).toBe(0);
-	expect(f.events().at(-1).args.slice(0, 2)).toEqual(["release", "edit"]);
+	expect(f.releaseBody()).toBeTruthy();
 });
 
 test("does not create a release when the GitHub lookup fails", () => {
@@ -418,4 +421,14 @@ test("does not create a release when the GitHub lookup fails", () => {
 	f.state({ published: true, githubStatus: 503 });
 	expect(f.run("publish").status).not.toBe(0);
 	expect(f.events().at(-1).args[0]).toBe("api");
+});
+
+test("leaves existing GitHub Release notes unchanged on a rerun", () => {
+	const f = fixture();
+	pushed(f);
+	const notes = "Release notes edited by the maintainer.";
+	f.state({ published: true, githubStatus: 200, releaseBody: notes });
+	const result = f.run("publish");
+	expect(result.status, result.stdout + result.stderr).toBe(0);
+	expect(f.releaseBody()).toBe(notes);
 });

@@ -41,8 +41,8 @@ must be newer than the current version, and the tag must not already exist.
 `push_release` asks before pushing main and the release tag together. If either
 update fails, neither is pushed. It does not push other local tags.
 
-The tag workflow publishes to npm using OIDC, then creates or updates the GitHub
-Release from CHANGELOG with `gh`.
+The tag workflow publishes to npm using OIDC, then creates the GitHub Release
+from CHANGELOG with `gh`. Reruns leave existing release notes alone.
 
 If preparation fails, check `git status` and `git log` before retrying. It may have
 already changed the version or created a commit.
@@ -50,7 +50,7 @@ already changed the version or created a commit.
 ## Failed releases
 
 Rerun a failed publish job on the same tag. If the version is already on npm, the
-job skips npm publication and updates the GitHub Release.
+job skips npm publication and creates the GitHub Release if it is missing.
 
 If the tagged code needs changing, cut a new version. Do not move a tag that has
 already been pushed. Published npm versions cannot be reused, even after
