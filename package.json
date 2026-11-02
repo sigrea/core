@@ -49,8 +49,8 @@
 		"cicheck": "vp check && vp test run && vp pack && vp run smoke",
 		"prepare": "vp config --no-agent",
 		"notes": "vp exec changelogen --no-output",
-		"release_version": "sh scripts/release-version.sh",
-		"push_release": "sh scripts/push-release.sh"
+		"release_version": "node scripts/release.js prepare",
+		"push_release": "node scripts/release.js push"
 	},
 	"dependencies": {
 		"alien-signals": "^3.2.1"
@@ -60,6 +60,7 @@
 		"@types/node": "^24.0.0",
 		"@vitest/coverage-v8": "catalog:",
 		"changelogen": "^0.6.2",
+		"semver": "^7.7.3",
 		"typescript": "5.9.3",
 		"vite-plus": "catalog:",
 		"vitest": "catalog:"

@@ -1,16 +1,14 @@
-# Repository Guidelines
+# Repository guidance
 
-## Project Structure and Module Layout
-The library exports from `index.ts`, and `vp pack` emits dual ESM and CJS bundles under `dist/`. Core signal primitives live in `packages/core`, molecule lifecycle hooks live in `packages/molecule/lifecycle`, reusable molecule helpers live in `packages/molecule`, and shared fixtures live in `packages/__tests__`. Images that illustrate behavior stay in `images/`, while generated artifacts such as `dist/` and `coverage/` must be kept out of commits by relying on the existing `.gitignore`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development and release commands.
+Formatting, lint, and TypeScript settings are in `vite.config.ts` and `tsconfig.json`.
 
-## Build, Test, and Local Development
-Install dependencies with `vp install`. Run `vp check`, `vp test run`, and `vp pack` individually, or `vp run cicheck` for checks, tests, packaging, and smoke checks. Use `vp fmt` to format source files and `vp test run --coverage` to enforce coverage thresholds. Node.js and pnpm versions are pinned in `.node-version` and `package.json`.
-
-## Coding Style and Naming Conventions
-All source files are authored as ES modules with two-space indentation. Runtime exports favor `camelCase`, types and classes use `PascalCase`, and molecule factories use the `molecule()` helper. Lifecycle utilities exposed publicly should mirror `onMount` and `onUnmount` naming so downstream adapters can grep for familiar hooks. Formatting deviations are considered lint failures, so run Oxfmt/Oxlint scripts before committing to catch drift quickly.
-
-## Testing Guidelines
-Vitest backs both unit and integration coverage. Place cross-package suites in `packages/__tests__` with the `*.test.ts` suffix, and co-locate targeted specs beside the modules they validate as `*.spec.ts`. Reproduce runtime lifecycles by creating molecule instances directly (e.g., `const instance = MyMolecule()`), tracking them with `trackMolecule(instance)`, establishing scopes with `beforeAll` or `beforeEach`, and always calling `disposeTrackedMolecules()` in `afterEach` to avoid hidden subscriptions. Each feature addition should include at least one happy path and one failure path test plus coverage verification through `vp test run --coverage`.
-
-## Commit and Pull Request Workflow
-Git history follows Conventional Commits, for example `feat: add scope watcher`, so use `<type>: <summary>` to keep changelog generation reliable. Pull requests should describe intent, highlight risky changes, and list the exact commands executed locally. Reference issues using `Closes #123` syntax, attach logs or snapshots when behavior changes, and never attach build outputs or `node_modules/`. When in doubt, cross-check CONTRIBUTING.md before opening the PR to confirm automation steps.
+- Keep evaluation and caching behavior aligned with alien-signals. Discuss any
+  departure before implementing it, and keep reactivity internals private.
+- Keep existing ESM/CJS exports and declaration paths working when editing
+  `index.ts`, `packages/index.ts`, or `package.json`.
+- Keep molecule and scope cleanup intact when changing lifecycle code. In tests,
+  clean up tracked molecules with `disposeTrackedMolecules()`. Signal-only tests
+  do not need molecule setup.
+- The local release command must not publish to npm or GitHub. Test release changes
+  in temporary Git repositories with mocked npm and gh commands.
