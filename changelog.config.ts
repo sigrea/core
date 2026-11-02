@@ -1,6 +1,6 @@
 import type { ChangelogConfig } from "changelogen";
 
-const config: ChangelogConfig = {
+const config: Partial<ChangelogConfig> = {
 	repo: "sigrea/core",
 	output: "CHANGELOG.md",
 	types: {

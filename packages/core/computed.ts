@@ -115,7 +115,7 @@ export function computed<T>(source: ComputedSource<T>): Computed<T> {
 export function isComputed<T>(value: unknown): value is Computed<T> {
 	return Boolean(
 		value &&
-			(typeof value === "object" || typeof value === "function") &&
-			(value as Record<PropertyKey, unknown>)[COMPUTED_BRAND] === true,
+		(typeof value === "object" || typeof value === "function") &&
+		(value as Record<PropertyKey, unknown>)[COMPUTED_BRAND] === true,
 	);
 }

@@ -192,7 +192,7 @@ function unregisterParentChild(parent: object, value: unknown): void {
 }
 
 export function trackDeepSignalVersion(
-	source: DeepSignal<object> | ReadonlyDeepSignal<object>,
+	source: DeepSignal<object>,
 	shallowOnly: boolean,
 ): number {
 	const target = toRawDeepSignal(source as object);
@@ -209,7 +209,7 @@ export function trackDeepSignalVersion(
 }
 
 export function peekDeepSignalVersion(
-	source: DeepSignal<object> | ReadonlyDeepSignal<object>,
+	source: DeepSignal<object>,
 	shallowOnly: boolean,
 ): number {
 	const target = toRawDeepSignal(source as object);
@@ -444,13 +444,14 @@ export function toRawDeepSignal<T>(source: T): T {
 	}
 	return source;
 }
-type DeepSignalObjectValue<T> = T extends Signal<infer U>
-	? U
-	: T extends ReadonlySignal<infer U>
+type DeepSignalObjectValue<T> =
+	T extends Signal<infer U>
 		? U
-		: T extends Computed<infer U>
+		: T extends ReadonlySignal<infer U>
 			? U
-			: DeepSignal<T>;
+			: T extends Computed<infer U>
+				? U
+				: DeepSignal<T>;
 
 type DeepSignalObject<T extends object> = {
 	[K in keyof T]: DeepSignalObjectValue<T[K]>;
@@ -460,15 +461,16 @@ type DeepSignalArrayMember<T> = DeepSignalObjectValue<T>;
 
 type DeepSignalArray<T> = { [K in keyof T]: DeepSignalArrayMember<T[K]> };
 
-type DeepSignalCollections<T> = T extends Map<infer K, infer V>
-	? Map<K, DeepSignalObjectValue<V>>
-	: T extends Set<infer V>
-		? Set<DeepSignalObjectValue<V>>
-		: T extends WeakMap<infer K, infer V>
-			? WeakMap<K, DeepSignalObjectValue<V>>
-			: T extends WeakSet<infer V>
-				? WeakSet<V>
-				: never;
+type DeepSignalCollections<T> =
+	T extends Map<infer K, infer V>
+		? Map<K, DeepSignalObjectValue<V>>
+		: T extends Set<infer V>
+			? Set<DeepSignalObjectValue<V>>
+			: T extends WeakMap<infer K, infer V>
+				? WeakMap<K, DeepSignalObjectValue<V>>
+				: T extends WeakSet<infer V>
+					? WeakSet<V>
+					: never;
 
 export type DeepSignal<T> = T extends (...args: unknown[]) => unknown
 	? T
@@ -490,13 +492,14 @@ export type DeepSignal<T> = T extends (...args: unknown[]) => unknown
 							? DeepSignalObject<T>
 							: T;
 
-type ReadonlyDeepSignalObjectValue<T> = T extends Signal<infer U>
-	? U
-	: T extends ReadonlySignal<infer U>
+type ReadonlyDeepSignalObjectValue<T> =
+	T extends Signal<infer U>
 		? U
-		: T extends Computed<infer U>
+		: T extends ReadonlySignal<infer U>
 			? U
-			: ReadonlyDeepSignal<T>;
+			: T extends Computed<infer U>
+				? U
+				: ReadonlyDeepSignal<T>;
 
 type ReadonlyDeepSignalObject<T extends object> = {
 	readonly [K in keyof T]: ReadonlyDeepSignalObjectValue<T[K]>;
@@ -508,13 +511,14 @@ type ReadonlyDeepSignalArray<T> = {
 	readonly [K in keyof T]: ReadonlyDeepSignalArrayMember<T[K]>;
 };
 
-type ShallowDeepSignalValue<T> = T extends Signal<infer U>
-	? Signal<U>
-	: T extends ReadonlySignal<infer U>
-		? ReadonlySignal<U>
-		: T extends Computed<infer U>
-			? Computed<U>
-			: T;
+type ShallowDeepSignalValue<T> =
+	T extends Signal<infer U>
+		? Signal<U>
+		: T extends ReadonlySignal<infer U>
+			? ReadonlySignal<U>
+			: T extends Computed<infer U>
+				? Computed<U>
+				: T;
 
 type ShallowDeepSignalObject<T extends object> = {
 	[K in keyof T]: ShallowDeepSignalValue<T[K]>;
@@ -542,13 +546,14 @@ export type ShallowDeepSignal<T> = T extends (...args: unknown[]) => unknown
 					? ShallowDeepSignalObject<T>
 					: T;
 
-type ReadonlyShallowDeepSignalValue<T> = T extends Signal<infer U>
-	? Signal<U>
-	: T extends ReadonlySignal<infer U>
-		? ReadonlySignal<U>
-		: T extends Computed<infer U>
-			? Computed<U>
-			: T;
+type ReadonlyShallowDeepSignalValue<T> =
+	T extends Signal<infer U>
+		? Signal<U>
+		: T extends ReadonlySignal<infer U>
+			? ReadonlySignal<U>
+			: T extends Computed<infer U>
+				? Computed<U>
+				: T;
 
 type ReadonlyShallowDeepSignalObject<T extends object> = {
 	readonly [K in keyof T]: ReadonlyShallowDeepSignalValue<T[K]>;
@@ -578,15 +583,16 @@ export type ReadonlyShallowDeepSignal<T> = T extends (
 					? ReadonlyShallowDeepSignalObject<T>
 					: T;
 
-type ReadonlyDeepSignalCollections<T> = T extends Map<infer K, infer V>
-	? ReadonlyMap<K, ReadonlyDeepSignalObjectValue<V>>
-	: T extends Set<infer V>
-		? ReadonlySet<ReadonlyDeepSignalObjectValue<V>>
-		: T extends WeakMap<infer K, infer V>
-			? WeakMap<K, ReadonlyDeepSignalObjectValue<V>>
-			: T extends WeakSet<infer V>
-				? WeakSet<V>
-				: never;
+type ReadonlyDeepSignalCollections<T> =
+	T extends Map<infer K, infer V>
+		? ReadonlyMap<K, ReadonlyDeepSignalObjectValue<V>>
+		: T extends Set<infer V>
+			? ReadonlySet<ReadonlyDeepSignalObjectValue<V>>
+			: T extends WeakMap<infer K, infer V>
+				? WeakMap<K, ReadonlyDeepSignalObjectValue<V>>
+				: T extends WeakSet<infer V>
+					? WeakSet<V>
+					: never;
 
 export type ReadonlyDeepSignal<T> = T extends (...args: unknown[]) => unknown
 	? T

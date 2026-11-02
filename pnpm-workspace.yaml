@@ -1,0 +1,18 @@
+packages:
+  - .
+catalog:
+  vite: npm:@voidzero-dev/vite-plus-core@1.4.0
+  vitest: 5.0.5
+  vite-plus: 1.4.0
+  "@vitest/coverage-v8": 5.0.5
+overrides:
+  vite@*: npm:@voidzero-dev/vite-plus-core@1.4.0
+  vitest@*: 5.0.5
+peerDependencyRules:
+  allowAny:
+    - vite
+    - vitest
+runtimeOnFail: ignore
+pmOnFail: ignore
+allowBuilds:
+  esbuild: true
