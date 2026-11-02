@@ -3,10 +3,10 @@
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development and release commands.
 Formatting, lint, and TypeScript settings are in `vite.config.ts` and `tsconfig.json`.
 
-- Follow alien-signals when changing evaluation or caching behavior. Keep the
-  reactivity internals private.
-- When changing public exports in `index.ts` or `packages/index.ts`, check both
-  ESM/CJS entry points and the declaration paths in `package.json`.
+- Keep evaluation and caching behavior aligned with alien-signals. Discuss any
+  departure before implementing it, and keep reactivity internals private.
+- Keep existing ESM/CJS exports and declaration paths working when editing
+  `index.ts`, `packages/index.ts`, or `package.json`.
 - Keep molecule and scope cleanup intact when changing lifecycle code. In tests,
   clean up tracked molecules with `disposeTrackedMolecules()`. Signal-only tests
   do not need molecule setup.
