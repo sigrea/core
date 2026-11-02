@@ -40,6 +40,9 @@ importers:
       changelogen:
         specifier: ^0.6.2
         version: 0.6.2(magicast@0.5.5)
+      semver:
+        specifier: ^7.7.3
+        version: 7.7.3
       typescript:
         specifier: 5.9.3
         version: 5.9.3
