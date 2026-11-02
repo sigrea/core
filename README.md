@@ -382,7 +382,7 @@ synchronous errors.
 
 ## Development
 
-This repo targets Node.js 24 or later.
+This package supports Node.js 24 or later.
 
 ### Browser dev flag
 
@@ -414,22 +414,8 @@ vp install --frozen-lockfile
 vp run cicheck
 ```
 
-Development uses Node.js 26.13.0 LTS and pnpm 12.16.1, pinned in
-`.node-version` and `package.json`. The published library still supports Node.js 24+.
-Vite+ manages this project's runtime and package manager; a global mise installation
-can remain in use for other projects.
-
-- `vp check` checks formatting, lint rules, and TypeScript types.
-- `vp test run` runs tests; `vp test run --coverage` collects V8 coverage.
-- `vp pack` builds the ESM/CJS library and declaration files.
-- `vp fmt` applies formatting.
-- `vp run notes` previews release notes.
-
-The pre-commit hook formats and checks staged source files, then runs all tests.
-`vp install` sets up the hook via `prepare`.
-
 See [CONTRIBUTING.md](https://github.com/sigrea/core/blob/main/CONTRIBUTING.md)
-for workflow details.
+for individual commands and the release workflow.
 
 ## License
 

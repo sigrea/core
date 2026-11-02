@@ -44,17 +44,13 @@
 		"access": "public"
 	},
 	"scripts": {
-		"build": "vp pack",
 		"prepack": "vp pack",
 		"smoke": "node --input-type=module -e \"const mod = await import('@sigrea/core'); for (const key of ['signal', 'computed', 'molecule', 'get', 'toSignal']) { if (typeof mod[key] !== 'function') throw new Error(key + ' export is missing'); }\" && node -e \"const mod = require('@sigrea/core'); for (const key of ['signal', 'computed', 'molecule', 'get', 'toSignal']) { if (typeof mod[key] !== 'function') throw new Error(key + ' export is missing'); }\"",
-		"changelog": "changelogen",
-		"test": "vp test run",
-		"test:coverage": "vp test run --coverage",
-		"typecheck": "vp check --no-fmt --no-lint",
-		"format": "vp fmt --check",
-		"format:fix": "vp fmt",
 		"cicheck": "vp check && vp test run && vp pack && vp run smoke",
-		"prepare": "vp config --no-agent"
+		"prepare": "vp config --no-agent",
+		"notes": "vp exec changelogen --no-output",
+		"release_version": "sh scripts/release-version.sh",
+		"push_release": "sh scripts/push-release.sh"
 	},
 	"dependencies": {
 		"alien-signals": "^3.2.1"

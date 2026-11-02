@@ -20,19 +20,12 @@ jobs:
           run-install: false
       - run: vp install --frozen-lockfile
       - run: vp run cicheck
-      - name: Ensure npm CLI supports trusted publishing
-        run: |
-          npm i -g npm@11.5.1
-          npm --version
-
       - name: Detect already-published version
         id: npmcheck
         run: |
           set -euo pipefail
           NAME=$(node -p "require('./package.json').name")
           VERSION=$(node -p "require('./package.json').version")
-          echo "name=$NAME" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
             echo "published=true" >> "$GITHUB_OUTPUT"
           else

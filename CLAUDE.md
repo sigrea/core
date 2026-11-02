@@ -4,38 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-**Install dependencies:**
-```bash
-vp install
+```sh
+vp install --frozen-lockfile
+vp check
+vp test run
+vp test run --coverage
+vp pack
+vp fmt
+vp run cicheck
 ```
 
-**Build:**
-```bash
-vp pack           # Production build via Vite+ / tsdown
-vp check --no-fmt --no-lint       # TypeScript type checking only
-```
-
-**Test:**
-```bash
-vp test run            # Run Vitest once (no watch)
-vp test run --coverage   # Collect V8 coverage
-```
-
-**Format:**
-```bash
-vp fmt --check          # Check Oxfmt/Oxlint formatting (no writes)
-vp fmt      # Apply Oxfmt/Oxlint auto-fixes
-```
-
-**CI simulation:**
-```bash
-vp run cicheck      # Run test, typecheck, build, smoke, and format checks
-```
-
-**Run a single test:**
-```bash
-vp test run packages/core/__tests__/signal.test.ts
-```
+Pass a file path to `vp test run` to run a single test file.
 
 ## Architecture Overview
 
