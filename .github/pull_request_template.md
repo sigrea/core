@@ -10,6 +10,6 @@
 <!--
 Quick checks run. If not run, say why.
 
-CI also validates PR title via semantic-pr.yml (Conventional Commits).
+CI also validates PR titles as Conventional Commits.
 -->
-- [ ] `pnpm -s cicheck`
+- [ ] `vp run cicheck`

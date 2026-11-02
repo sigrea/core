@@ -4,8 +4,6 @@ name = "core"
 
 [setup]
 script = '''
-mise trust -y
-eval "$(mise env -s bash)"
-mise install
-pnpm i --frozen-lockfile
+vp env install
+vp install --frozen-lockfile
 '''

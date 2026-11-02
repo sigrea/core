@@ -6,35 +6,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Install dependencies:**
 ```bash
-pnpm install
+vp install
 ```
 
 **Build:**
 ```bash
-pnpm build           # Production build via unbuild
-pnpm typecheck       # TypeScript type checking only
+vp pack           # Production build via Vite+ / tsdown
+vp check --no-fmt --no-lint       # TypeScript type checking only
 ```
 
 **Test:**
 ```bash
-pnpm test            # Run Vitest once (no watch)
-pnpm test:coverage   # Collect V8 coverage
+vp test run            # Run Vitest once (no watch)
+vp test run --coverage   # Collect V8 coverage
 ```
 
 **Format:**
 ```bash
-pnpm format          # Check Biome formatting (no writes)
-pnpm format:fix      # Apply Biome auto-fixes
+vp fmt --check          # Check Oxfmt/Oxlint formatting (no writes)
+vp fmt      # Apply Oxfmt/Oxlint auto-fixes
 ```
 
 **CI simulation:**
 ```bash
-pnpm -s cicheck      # Run test, typecheck, build, smoke, and format checks
+vp run cicheck      # Run test, typecheck, build, smoke, and format checks
 ```
 
 **Run a single test:**
 ```bash
-pnpm test packages/core/__tests__/signal.test.ts
+vp test run packages/core/__tests__/signal.test.ts
 ```
 
 ## Architecture Overview
@@ -100,7 +100,7 @@ packages/
 
 ## Coding Conventions
 
-- **ES modules**: All `.ts` files with 2-space indentation, Biome applied
+- **ES modules**: All `.ts` files with 2-space indentation, Oxfmt/Oxlint applied
 - **Naming**: Runtime uses camelCase, types/classes use PascalCase, molecule factories use `molecule()`
 - **Lifecycle utilities**: Unify with `onMount`, `onUnmount` naming for searchability
 - **Test placement**: Cross-package in `packages/__tests__/*.test.ts`, unit tests adjacent to modules as `*.spec.ts`
@@ -112,7 +112,7 @@ packages/
 - Call `disposeTrackedMolecules()` in `afterEach()` to reset hidden subscriptions
 - For non-tracked cleanup, use `disposeMolecule(instance)` directly
 - Add happy path + failure path for each feature
-- Verify coverage with `pnpm test:coverage`
+- Verify coverage with `vp test run --coverage`
 
 ## Commit Conventions
 
@@ -121,9 +121,9 @@ packages/
 
 ## Release Flow
 
-- Maintainers run `SIGREA_RELEASE_VERSION=x.y.z mise run release_version` from a clean `main` branch. The task runs `pnpm -s cicheck`, updates the changelog, and creates the `chore(release): vX.Y.Z` commit plus annotated `vX.Y.Z` tag.
-- Push the commit and tag with `mise run push_release`. This runs `git push origin main --follow-tags` and triggers `.github/workflows/publish.yml`.
-- `publish` installs deps, runs `pnpm -s cicheck`, publishes to npm with OIDC trusted publishing, and syncs GitHub Release notes via `pnpm exec changelogen gh release`.
+- Maintainers run `SIGREA_RELEASE_VERSION=x.y.z vp run release_version` from a clean `main` branch. The task runs `vp run cicheck`, updates the changelog, and creates the `chore(release): vX.Y.Z` commit plus annotated `vX.Y.Z` tag.
+- Push the commit and tag with `vp run push_release`. This runs `git push origin main --follow-tags` and triggers `.github/workflows/publish.yml`.
+- `publish` installs deps, runs `vp run cicheck`, publishes to npm with OIDC trusted publishing, and syncs GitHub Release notes via `vp exec changelogen gh release`.
 
 ## Important Notes
 
