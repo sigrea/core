@@ -1,8 +1,6 @@
 # Contributing to @sigrea/core
 
-Thank you for contributing! This project uses a PR-based workflow with required CI checks.
-
-## Requirements
+## Development
 
 Install [Vite+](https://viteplus.dev/guide/). Node.js and pnpm versions are pinned
 in `.node-version` and `package.json`.
@@ -12,38 +10,43 @@ vp env install
 vp install --frozen-lockfile
 ```
 
-## Commands
-
-- `vp check` — format, lint, and TypeScript checks
-- `vp test run` — unit tests
+- `vp check` — formatting, lint, and TypeScript checks
+- `vp test run` — tests
 - `vp test run --coverage` — coverage
 - `vp pack` — ESM/CJS bundles and declarations
 - `vp fmt` — format source files
 - `vp run cicheck` — checks, tests, packaging, and smoke checks
 
-The pre-commit hook fixes staged files and runs the test suite.
+The pre-commit hook fixes staged files. Run `vp run cicheck` before requesting review.
+Use Conventional Commits for PR titles; squash merges use the title as the commit
+message, and changelogen reads it for release notes.
 
-## Commit Convention
+Describe the problem and resulting behavior in the PR. Include manual verification
+or remaining gaps when relevant; routine CI results do not need repeating.
 
-Conventional Commits are required. Examples: `feat: ...`, `fix(scope): ...`, `docs: ...`.
-The main branch uses squash merges, so the PR title becomes the final commit message.
+## Releases
 
-## Changelog Entries
+Releases publish stable `x.y.z` versions through GitHub Actions using npm OIDC.
 
-Changelogen reads Conventional Commits directly, so please keep commit messages descriptive. Any user-facing change (features, fixes, deprecations, breaking updates) should have a clear `feat`, `fix`, or similar commit. Non-user-facing changes can use `chore`, `test`, etc. For PRs that squash multiple commits, summarize the user impact in the PR description so release managers can double-check the changelog entry.
+1. Start on a clean `main` matching `origin/main`. Preview notes with `vp run notes`.
+2. Run `SIGREA_RELEASE_VERSION=x.y.z vp run release_version`. It checks the version
+   and tags, runs `cicheck`, updates the version and CHANGELOG, formats the package,
+   and creates one commit and an annotated tag. It does not publish a GitHub Release.
+3. Run `vp run push_release`. It verifies the tag and remote main, then asks before
+   pushing main and that tag atomically. Other local tags are not pushed.
+4. The tag workflow checks the version and main ancestry, tests the package, packs
+   it once, and smoke-tests the extracted tarball before publishing it to npm.
+   It then creates or updates the GitHub Release from CHANGELOG using `gh`.
 
-## Pull Requests
+The target version must be newer than the current package version and its tag must
+not exist. If preparation fails after editing files, inspect those changes before
+retrying; the script does not discard changes or rewrite commits and tags.
 
-Ensure the following before requesting review:
-`vp run cicheck` passes and the PR title follows Conventional Commits.
+## Recovering a release
 
-## Release Workflow
-
-This repository uses [changelogen](https://github.com/unjs/changelogen) to update `CHANGELOG.md` and create the release commit plus tag. Releases use an explicit version so maintainers do not depend on an inferred bump.
-
-1. Ensure `main` is up to date and clean. Run `vp run notes` if you want to preview the generated notes without touching the tree.
-2. Run `SIGREA_RELEASE_VERSION=x.y.z vp run release_version`. This runs `vp run cicheck`, updates the changelog, amends the release commit if formatting changes are needed, and creates the annotated `vX.Y.Z` tag.
-3. Push the commit and tag together with `vp run push_release`. The task uses `git push origin main --follow-tags`.
-4. Tag pushes run `.github/workflows/publish.yml` in the `release` environment and publish to npm through OIDC.
-
-If the publish workflow fails, fix the root cause and re-run the job from the GitHub Actions UI. Avoid creating a new tag unless you intend to cut a new release. If you must roll back, delete the tag locally and remotely, revert the release commit, and start over from step 1.
+- If the publish workflow fails before npm publication, fix the cause and rerun the
+  failed job on the same tag. If the tagged source needs changing, cut a new version.
+- If npm publication succeeds but the GitHub Release step fails, rerun the job.
+  It skips the published npm version and finishes the GitHub Release.
+- If a published package is faulty, publish a corrected version. Deleting a Git tag
+  or unpublishing npm does not make that version reusable. Never move a pushed tag.

@@ -1,15 +1,4 @@
-<!-- Thank you for contributing to @sigrea/core! -->
-
-## Purpose
-<!-- One sentence on what this PR solves. Add `Closes #123` if relevant. -->
-
 ## Summary
-<!-- Scope touched and user impact. Note breaking changes or migration steps if any. -->
 
-## Verification
-<!--
-Quick checks run. If not run, say why.
-
-CI also validates PR titles as Conventional Commits.
--->
-- [ ] `vp run cicheck`
+<!-- Describe the problem and resulting behavior. Link an issue when relevant.
+Include manual verification or remaining gaps if needed. -->
