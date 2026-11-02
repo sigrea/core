@@ -124,7 +124,7 @@ if (tool === 'vp') {
  }
 }
 `;
-	// Keep all process doubles and mutable state outside the Git worktree.
+	// Keep stubs and their state outside the repo so git status stays clean.
 	for (const tool of ["vp", "pnpm", "npm", "gh"]) {
 		writeFileSync(join(bin, tool), mock, { mode: 0o755 });
 	}
