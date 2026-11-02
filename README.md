@@ -382,7 +382,7 @@ synchronous errors.
 
 ## Development
 
-This repo targets Node.js 24 or later.
+This package supports Node.js 24 or later.
 
 ### Browser dev flag
 
@@ -406,23 +406,16 @@ export default defineConfig(({ command }) => ({
 }));
 ```
 
-If you use mise:
+Install [Vite+](https://viteplus.dev/guide/), then run:
 
-- `mise trust -y` trusts `mise.toml` (first run only).
-- `pnpm -s cicheck` runs CI-equivalent checks locally.
-- `mise run notes` previews release notes (optional).
-
-You can also run pnpm scripts directly:
-
-- `pnpm install` installs dependencies.
-- `pnpm test` runs tests.
-- `pnpm typecheck` runs TypeScript type checking.
-- `pnpm test:coverage` collects coverage.
-- `pnpm build` builds the package.
-- `pnpm -s cicheck` runs CI checks locally.
+```sh
+vp env install
+vp install --frozen-lockfile
+vp run cicheck
+```
 
 See [CONTRIBUTING.md](https://github.com/sigrea/core/blob/main/CONTRIBUTING.md)
-for workflow details.
+for individual commands and the release workflow.
 
 ## License
 

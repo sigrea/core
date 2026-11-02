@@ -129,24 +129,22 @@ type WatchSourceList<T extends readonly unknown[]> = {
 	[K in keyof T]: WatchSource<T[K]>;
 };
 
-type AnyWatchSource =
-	| WatchSource<unknown>
-	| DeepSignal<object>
-	| ReadonlyDeepSignal<object>;
+type AnyWatchSource = WatchSource<unknown> | DeepSignal<object>;
 
-type UnwrapWatchSource<S> = S extends Signal<infer V>
-	? V
-	: S extends ReadonlySignal<infer V>
+type UnwrapWatchSource<S> =
+	S extends Signal<infer V>
 		? V
-		: S extends Computed<infer V>
+		: S extends ReadonlySignal<infer V>
 			? V
-			: S extends () => infer V
+			: S extends Computed<infer V>
 				? V
-				: S extends DeepSignal<infer V>
+				: S extends () => infer V
 					? V
-					: S extends ReadonlyDeepSignal<infer V>
+					: S extends DeepSignal<infer V>
 						? V
-						: S;
+						: S extends ReadonlyDeepSignal<infer V>
+							? V
+							: S;
 
 type WatchSourceValues<Sources extends readonly AnyWatchSource[]> = {
 	[K in keyof Sources]: UnwrapWatchSource<Sources[K]>;

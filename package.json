@@ -2,72 +2,70 @@
 	"name": "@sigrea/core",
 	"version": "0.7.2",
 	"description": "Reactive primitives, deep signals, and molecule lifecycles for Sigrea.",
-	"license": "MIT",
-	"type": "module",
-	"packageManager": "pnpm@10.0.0",
-	"publishConfig": {
-		"access": "public"
-	},
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/sigrea/core.git"
-	},
+	"keywords": [
+		"computed",
+		"effect",
+		"lifecycle",
+		"molecule",
+		"reactivity",
+		"scope",
+		"signals",
+		"typescript"
+	],
 	"homepage": "https://github.com/sigrea/core#readme",
 	"bugs": {
 		"url": "https://github.com/sigrea/core/issues"
 	},
-	"engines": {
-		"node": ">=24"
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/sigrea/core.git"
 	},
+	"files": [
+		"dist"
+	],
+	"type": "module",
 	"sideEffects": false,
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.mjs",
-			"require": "./dist/index.cjs"
-		}
-	},
 	"main": "./dist/index.cjs",
 	"types": "./dist/index.d.ts",
-	"files": ["dist"],
-	"keywords": [
-		"signals",
-		"reactivity",
-		"computed",
-		"effect",
-		"molecule",
-		"scope",
-		"lifecycle",
-		"typescript"
-	],
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.mjs"
+			},
+			"require": {
+				"types": "./dist/index.d.cts",
+				"default": "./dist/index.cjs"
+			}
+		}
+	},
+	"publishConfig": {
+		"access": "public"
+	},
 	"scripts": {
-		"build": "unbuild",
-		"prepack": "unbuild",
+		"prepack": "vp pack",
 		"smoke": "node --input-type=module -e \"const mod = await import('@sigrea/core'); for (const key of ['signal', 'computed', 'molecule', 'get', 'toSignal']) { if (typeof mod[key] !== 'function') throw new Error(key + ' export is missing'); }\" && node -e \"const mod = require('@sigrea/core'); for (const key of ['signal', 'computed', 'molecule', 'get', 'toSignal']) { if (typeof mod[key] !== 'function') throw new Error(key + ' export is missing'); }\"",
-		"changelog": "changelogen",
-		"test": "vitest run",
-		"test:coverage": "vitest --coverage",
-		"typecheck": "tsc -p tsconfig.json --noEmit",
-		"format": "biome check .",
-		"format:fix": "biome check --write .",
-		"cicheck": "pnpm -s test && pnpm -s typecheck && pnpm -s build && pnpm -s smoke && pnpm -s format"
+		"cicheck": "vp check && vp test run && vp pack && vp run smoke",
+		"prepare": "vp config --no-agent",
+		"notes": "vp exec changelogen --no-output",
+		"release_version": "sh scripts/release-version.sh",
+		"push_release": "sh scripts/push-release.sh"
 	},
 	"dependencies": {
 		"alien-signals": "^3.2.1"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "1.9.4",
+		"@arethetypeswrong/core": "^0.18.5",
 		"@types/node": "^24.0.0",
-		"@vitest/coverage-v8": "^3.2.4",
-		"baseline-browser-mapping": "^2.10.30",
+		"@vitest/coverage-v8": "catalog:",
 		"changelogen": "^0.6.2",
-		"lefthook": "1.13.6",
-		"tsx": "^4.20.5",
 		"typescript": "5.9.3",
-		"unbuild": "3.6.1",
-		"vitest": "^3.2.4"
+		"vite-plus": "catalog:",
+		"vitest": "catalog:"
 	},
-	"pnpm": {
-		"onlyBuiltDependencies": ["lefthook", "@biomejs/biome"]
-	}
+	"engines": {
+		"node": ">=24"
+	},
+	"packageManager": "pnpm@12.16.1"
 }

@@ -38,15 +38,16 @@ export type MoleculeGetArgs<TProps extends MoleculePropsInput> =
 			? [props?: TProps | MoleculePropsGetter<TProps>]
 			: [props: TProps | MoleculePropsGetter<TProps>];
 
-export type IsAllOptional<T> = T extends Record<string, never>
-	? true
-	: keyof T extends never
+export type IsAllOptional<T> =
+	T extends Record<string, never>
 		? true
-		: {
-					[K in keyof T]-?: undefined extends T[K] ? never : K;
-				}[keyof T] extends never
+		: keyof T extends never
 			? true
-			: false;
+			: {
+						[K in keyof T]-?: undefined extends T[K] ? never : K;
+				  }[keyof T] extends never
+				? true
+				: false;
 
 export type MoleculeFactory<
 	TReturn extends object,
